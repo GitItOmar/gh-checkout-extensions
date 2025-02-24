@@ -17,10 +17,9 @@ const NO_CHANGES = {
  * @returns {FunctionRunResult}
  */
 export function run(input) {
-  const firstLineAttribute = input?.cart?.lines[0]?.attribute?.value;
-  console.log('First line attribute:', firstLineAttribute);
+  const customerType = input?.cart?.attribute?.value;
 
-  if (firstLineAttribute === "b2c") {
+  if (customerType === "b2c") {
     const hideOperations = input.paymentMethods
       .filter(method => method.name === "Rechnungskauf für Firmenkunden")
       .map(method => ({
@@ -33,7 +32,7 @@ export function run(input) {
     };
   }
 
-  if (!firstLineAttribute || firstLineAttribute === "b2b") {
+  if (!customerType || customerType === "b2b") {
     const hideOperations = input.paymentMethods
       .filter(method => method.name === "klarna_pay_later")
       .map(method => ({

@@ -4,8 +4,8 @@ import {
   BlockStack,
   ChoiceList,
   Choice,
-  useApplyCartLinesChange,
-  useCartLines,
+  useAttributeValues,
+  useApplyAttributeChange,
 } from "@shopify/ui-extensions-react/checkout";
 
 export default reactExtension(
@@ -16,24 +16,15 @@ export default reactExtension(
 );
 
 function Extension() {
-  const applyCarLinesChange = useApplyCartLinesChange();
-  const cartLines = useCartLines();
+  const [customerType] = useAttributeValues(["customer_type"]);
+  const applyAttributeChange = useApplyAttributeChange();
 
-  const handleSelectionChange = async (selectedValue) => {
-    const updatePromises = cartLines.map((line) =>
-      applyCarLinesChange({
-        type: "updateCartLine",
-        id: line.id,
-        attributes: [
-          {
-            key: "customer_type",
-            value: selectedValue,
-          },
-        ],
-      })
-    );
-
-    await Promise.all(updatePromises);
+  const handleSelectionChange = (value) => {
+    applyAttributeChange({
+      key: "customer_type",
+      value: value,
+      type: "updateAttribute",
+    });
   };
 
   return (
@@ -41,7 +32,7 @@ function Extension() {
       <Banner title="Kundentyp auswählen">
         Bitte wählen Sie Ihren Kundentyp aus
       </Banner>
-      <ChoiceList name="choice" value="b2b" onChange={handleSelectionChange}>
+      <ChoiceList name="choice" value={customerType || "b2b"} onChange={handleSelectionChange}>
         <BlockStack>
           <Choice id="b2b">Geschäftskunde (B2B)</Choice>
           <Choice id="b2c">Privatkunde (B2C)</Choice>
