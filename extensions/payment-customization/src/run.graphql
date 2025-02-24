@@ -1,0 +1,15 @@
+query RunInput {
+  cart {
+    lines {
+      id
+      attribute (key: "customer_type") {
+        key
+        value
+      }
+    }
+  }
+  paymentMethods {
+    id
+    name
+  }
+}

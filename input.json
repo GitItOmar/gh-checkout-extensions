@@ -1,0 +1,17 @@
+{
+  "input": {
+    "paymentCustomization": {
+      "metafield": null
+    },
+    "cart": {
+      "lines": [
+        {
+          "attribute": {
+            "key": "foo"
+          }
+        }
+      ]
+    },
+    "shop": {}
+  }
+}

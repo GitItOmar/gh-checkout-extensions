@@ -1,0 +1,24 @@
+# Learn more about configuring your app at https://shopify.dev/docs/apps/tools/cli/configuration
+
+client_id = "588aef5cc2b88ce2c843f3f0a66b8049"
+application_url = "https://shopify.dev/apps/default-app-home"
+embedded = true
+name = "checkout-b2b"
+handle = "checkout-b2b-2"
+
+[build]
+dev_store_url = "omardev2.myshopify.com"
+include_config_on_deploy = true
+
+[webhooks]
+api_version = "2025-01"
+
+[access_scopes]
+# Learn more at https://shopify.dev/docs/apps/tools/cli/configuration#access_scopes
+scopes = ""
+
+[auth]
+redirect_urls = [ "https://shopify.dev/apps/default-app-home/api/auth" ]
+
+[pos]
+embedded = false
