@@ -4,5 +4,7 @@
   "privateCustomer": "Privatkunde",
   "vatId": "USt-IdNr.",
   "companyName": "Firmenname",
-  "validatingVatId": "VAT ID wird überprüft..."
+  "validatingVatId": "VAT ID wird überprüft...",
+  "invalidVatIdFormat": "Ungültiges Format für die USt-IdNr.",
+  "failedToValidateVatId": "Fehler beim Überprüfen der USt-IdNr."
 }

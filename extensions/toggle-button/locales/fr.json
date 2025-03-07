@@ -4,5 +4,7 @@
   "privateCustomer": "Client particulier",
   "vatId": "TVA",
   "companyName": "Nom de la société",
-  "validatingVatId": "Validating VAT ID..."
+  "validatingVatId": "Validation de la TVA...",
+  "invalidVatIdFormat": "Format de la TVA invalide",
+  "failedToValidateVatId": "Erreur lors de la validation de la TVA"
 }

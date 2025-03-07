@@ -4,5 +4,7 @@
   "privateCustomer": "Private customer",
   "vatId": "VAT ID",
   "companyName": "Company name",
-  "validatingVatId": "Validating VAT ID..."
+  "validatingVatId": "Validating VAT ID...",
+  "invalidVatIdFormat": "Invalid VAT ID format",
+  "failedToValidateVatId": "Failed to validate VAT ID"
 }

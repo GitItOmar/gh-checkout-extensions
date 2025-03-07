@@ -13,6 +13,7 @@ import {
   Spinner,
 } from "@shopify/ui-extensions-react/checkout";
 import { useState } from "react";
+import useSecureFetch from "../hooks/useSecureFetch";
 
 const customerTypeExtension = reactExtension(
   "purchase.checkout.delivery-address.render-before",
@@ -31,6 +32,8 @@ function CustomerTypeExtension() {
   const [companyName, setCompanyName] = useState("");
   const applyShippingAddressChange = useApplyShippingAddressChange();
   const [isValidatingVat, setIsValidatingVat] = useState(false);
+  const [vatValidationResult, setVatValidationResult] = useState(null);
+  const secureFetch = useSecureFetch();
 
   const handleSelectionChange = (value) => {
     applyAttributeChange({
@@ -42,16 +45,39 @@ function CustomerTypeExtension() {
 
   const handleVatIdChange = (value) => {
     setVatId(value);
+    setVatValidationResult(null);
   };
 
-  const handleVatIdBlur = (value) => {
+  const handleVatIdBlur = async (value) => {
     if (value) {
+      // Basic validation before making the API request
+      const vatIdPattern = /^[A-Z]{2}[0-9A-Z+*]{2,12}$/;
+      if (!vatIdPattern.test(value)) {
+        setVatValidationResult({
+          success: false,
+          message: translate("invalidVatIdFormat"),
+        });
+        return;
+      }
+
       setIsValidatingVat(true);
-      // Simulate VAT ID validation with a timeout
-      setTimeout(() => {
-        // Here you would typically validate the VAT ID
+      try {
+        const data = await secureFetch("/api/validate-vat", "POST", { vatId: value });
+        setVatValidationResult(data);
+
+        if (data.success && data.data && data.data.company_name) {
+          // If VAT validation returns a company name, update the company field
+          setCompanyName(data.data.company_name);
+          handleCompanyNameBlur(data.data.company_name);
+        }
+      } catch (error) {
+        setVatValidationResult({
+          success: false,
+          message: translate("failedToValidateVatId"),
+        });
+      } finally {
         setIsValidatingVat(false);
-      }, 1500);
+      }
     }
   };
 
@@ -97,6 +123,11 @@ function CustomerTypeExtension() {
             onChange={handleVatIdChange}
             onBlur={() => handleVatIdBlur(vatId || "")}
             disabled={isValidatingVat}
+            error={
+              vatValidationResult && !vatValidationResult.success
+                ? vatValidationResult.message
+                : undefined
+            }
           />
           {isValidatingVat && (
             <InlineStack spacing="tight" blockAlignment="center">
