@@ -1,0 +1,8 @@
+{
+  "customerTypeDescription": "Wählen Sie, ob Sie eine Bestellung als Privatperson oder als Geschäftskunde aufgeben möchten.",
+  "businessCustomer": "Geschäftskunde",
+  "privateCustomer": "Privatkunde",
+  "vatId": "USt-IdNr.",
+  "companyName": "Firmenname",
+  "validatingVatId": "VAT ID wird überprüft..."
+}

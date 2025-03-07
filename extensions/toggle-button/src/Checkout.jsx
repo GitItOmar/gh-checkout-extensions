@@ -1,23 +1,36 @@
 import {
   reactExtension,
-  Banner,
   BlockStack,
   ChoiceList,
   Choice,
   useAttributeValues,
   useApplyAttributeChange,
+  Text,
+  InlineStack,
+  useTranslate,
+  TextField,
+  useApplyShippingAddressChange,
+  Spinner,
 } from "@shopify/ui-extensions-react/checkout";
+import { useState } from "react";
 
-export default reactExtension(
+const customerTypeExtension = reactExtension(
   "purchase.checkout.delivery-address.render-before",
   () => {
-    return <Extension />;
+    return <CustomerTypeExtension />;
   }
 );
 
-function Extension() {
+export default customerTypeExtension;
+
+function CustomerTypeExtension() {
   const [customerType] = useAttributeValues(["customer_type"]);
   const applyAttributeChange = useApplyAttributeChange();
+  const translate = useTranslate();
+  const [vatId, setVatId] = useState("");
+  const [companyName, setCompanyName] = useState("");
+  const applyShippingAddressChange = useApplyShippingAddressChange();
+  const [isValidatingVat, setIsValidatingVat] = useState(false);
 
   const handleSelectionChange = (value) => {
     applyAttributeChange({
@@ -27,17 +40,72 @@ function Extension() {
     });
   };
 
+  const handleVatIdChange = (value) => {
+    setVatId(value);
+  };
+
+  const handleVatIdBlur = (value) => {
+    if (value) {
+      setIsValidatingVat(true);
+      // Simulate VAT ID validation with a timeout
+      setTimeout(() => {
+        // Here you would typically validate the VAT ID
+        setIsValidatingVat(false);
+      }, 1500);
+    }
+  };
+
+  const handleCompanyNameBlur = (value) => {
+    // Update the company field in the shipping address only on blur
+    applyShippingAddressChange({
+      type: "updateShippingAddress",
+      address: {
+        company: value,
+      },
+    });
+  };
+
+  const handleCompanyNameChange = (value) => {
+    setCompanyName(value);
+  };
+
   return (
-    <BlockStack border={"dotted"} padding={"tight"}>
-      <Banner title="Kundentyp auswählen">
-        Bitte wählen Sie Ihren Kundentyp aus
-      </Banner>
-      <ChoiceList name="choice" value={customerType || "b2b"} onChange={handleSelectionChange}>
-        <BlockStack>
-          <Choice id="b2b">Geschäftskunde (B2B)</Choice>
-          <Choice id="b2c">Privatkunde (B2C)</Choice>
-        </BlockStack>
+    <BlockStack>
+      <Text size="base">{translate("customerTypeDescription")}</Text>
+      <ChoiceList
+        name="choice"
+        value={customerType || "b2b"}
+        onChange={handleSelectionChange}
+      >
+        <InlineStack spacing="base">
+          <Choice id="b2b">{translate("businessCustomer")}</Choice>
+          <Choice id="b2c">{translate("privateCustomer")}</Choice>
+        </InlineStack>
       </ChoiceList>
+
+      {customerType === "b2b" && (
+        <BlockStack>
+          <TextField
+            label={translate("companyName")}
+            value={companyName || ""}
+            onChange={handleCompanyNameChange}
+            onBlur={() => handleCompanyNameBlur(companyName || "")}
+          />
+          <TextField
+            label={translate("vatId")}
+            value={vatId || ""}
+            onChange={handleVatIdChange}
+            onBlur={() => handleVatIdBlur(vatId || "")}
+            disabled={isValidatingVat}
+          />
+          {isValidatingVat && (
+            <InlineStack spacing="tight" blockAlignment="center">
+              <Spinner size="small" />
+              <Text size="small">{translate("validatingVatId")}</Text>
+            </InlineStack>
+          )}
+        </BlockStack>
+      )}
     </BlockStack>
   );
 }

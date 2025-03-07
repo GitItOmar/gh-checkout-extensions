@@ -18,6 +18,7 @@ type = "ui_extension"
 [[extensions.targeting]]
 module = "./src/Checkout.jsx"
 target = "purchase.checkout.delivery-address.render-before"
+export = "customerTypeExtension"
 
 [extensions.capabilities]
 # Gives your extension access to directly query Shopify’s storefront API.

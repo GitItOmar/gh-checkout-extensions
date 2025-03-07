@@ -1,0 +1,8 @@
+{
+  "customerTypeDescription": "Choose whether you want to place an order as a private individual or as a business customer.",
+  "businessCustomer": "Business customer",
+  "privateCustomer": "Private customer",
+  "vatId": "VAT ID",
+  "companyName": "Company name",
+  "validatingVatId": "Validating VAT ID..."
+}

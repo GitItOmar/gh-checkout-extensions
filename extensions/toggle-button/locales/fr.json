@@ -1,5 +1,8 @@
 {
-  "welcome": "Bienvenue dans l'extension {{target}}!",
-  "iWouldLikeAFreeGiftWithMyOrder": "Je souhaite recevoir un cadeau gratuit avec ma commande",
-  "attributeChangesAreNotSupported": "Les modifications d'attribut ne sont pas prises en charge dans cette commande"
+  "customerTypeDescription": "Choisissez si vous souhaitez passer une commande en tant que particulier ou en tant que client professionnel.",
+  "businessCustomer": "Client professionnel",
+  "privateCustomer": "Client particulier",
+  "vatId": "TVA",
+  "companyName": "Nom de la société",
+  "validatingVatId": "Validating VAT ID..."
 }
