@@ -14,16 +14,7 @@ const validateRequest = (req, res, next) => {
   const path = req.originalUrl;
   let body = "";
 
-  try {
-    body = req.body ? JSON.stringify(req.body) : "";
-  } catch (error) {
-    return res.status(400).json({ message: "Invalid request body" });
-  }
-
-  // Check if SECRET_KEY is defined
-  if (!SECRET_KEY) {
-    return res.status(500).json({ message: "Server configuration error" });
-  }
+  body = req.body ? JSON.stringify(req.body) : "";
 
   // Check if the timestamp is within an acceptable range (e.g., 5 minutes)
   const currentTime = Date.now();
@@ -46,13 +37,6 @@ const validateRequest = (req, res, next) => {
   if (expectedSignature !== signature) {
     return res.status(403).json({ message: "Invalid signature" });
   }
-
-  // Optionally, you can store nonces in a database or cache to prevent replay attacks
-  // Check if the nonce has been used before
-  // if (nonceAlreadyUsed(nonce)) {
-  //   return res.status(403).json({ message: 'Nonce already used' });
-  // }
-  // markNonceAsUsed(nonce);
 
   next();
 };

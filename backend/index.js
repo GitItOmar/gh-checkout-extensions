@@ -8,6 +8,7 @@ import * as Sentry from "@sentry/node";
 import vatRoutes from "./routes/vatRoutes.js";
 import validateRequest from "./middleware/validateRequest.js";
 import "./instrument.js";
+import shopifyRoutes from "./routes/shopifyRoutes.js";
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -35,6 +36,7 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
 app.use("/api", validateRequest, vatRoutes);
+app.use("/api", validateRequest, shopifyRoutes);
 
 app.use((req, res) => {
   res.status(404).json({

@@ -29,9 +29,11 @@
   },
   "dependencies": {
     "@sentry/node": "^9.5.0",
+    "@shopify/admin-api-client": "^1.0.6",
     "cors": "^2.8.5",
     "dotenv": "^16.4.7",
     "express": "^4.21.2",
+    "graphql-tag": "^2.12.6",
     "helmet": "^8.0.0",
     "morgan": "^1.10.0"
   }

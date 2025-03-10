@@ -11,6 +11,7 @@ import {
   TextField,
   useApplyShippingAddressChange,
   Spinner,
+  useCustomer,
 } from "@shopify/ui-extensions-react/checkout";
 import { useState } from "react";
 import useSecureFetch from "../hooks/useSecureFetch";
@@ -34,6 +35,7 @@ function CustomerTypeExtension() {
   const [isValidatingVat, setIsValidatingVat] = useState(false);
   const [vatValidationResult, setVatValidationResult] = useState(null);
   const secureFetch = useSecureFetch();
+  const customer = useCustomer();
 
   const handleSelectionChange = (value) => {
     applyAttributeChange({
@@ -67,6 +69,7 @@ function CustomerTypeExtension() {
 
         if (data.success && data.data && data.data.company_name) {
           // If VAT validation returns a company name, update the company field
+          console.log("VAT validation returned company name:", data.data.company_name);
           setCompanyName(data.data.company_name);
           handleCompanyNameBlur(data.data.company_name);
         }
@@ -81,7 +84,8 @@ function CustomerTypeExtension() {
     }
   };
 
-  const handleCompanyNameBlur = (value) => {
+  const handleCompanyNameBlur = async (value) => {
+    console.log("Company name blur event with value:", value);
     // Update the company field in the shipping address only on blur
     applyShippingAddressChange({
       type: "updateShippingAddress",
@@ -89,9 +93,34 @@ function CustomerTypeExtension() {
         company: value,
       },
     });
+    console.log("Applied shipping address change with company:", value);
+
+    // Save company name to customer metafield
+    if (customer && customer.id && value) {
+      console.log("Attempting to save company name to metafield for customer:", customer.id);
+      try {
+        const response = await secureFetch("/api/set-metafield", "POST", {
+          customerId: customer.id,
+          namespace: "customer_b2b",
+          key: "company_name",
+          value: value,
+          type: "single_line_text_field"
+        });
+        console.log("Metafield save response:", response);
+      } catch (error) {
+        console.error("Failed to save company name to metafield:", error);
+      }
+    } else {
+      console.log("Skipping metafield save - missing data:", { 
+        hasCustomer: !!customer, 
+        customerId: customer?.id, 
+        companyValue: value 
+      });
+    }
   };
 
   const handleCompanyNameChange = (value) => {
+    console.log("Company name changed to:", value);
     setCompanyName(value);
   };
 
