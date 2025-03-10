@@ -14,7 +14,7 @@ import {
   useCustomer,
 } from "@shopify/ui-extensions-react/checkout";
 import { useState } from "react";
-import useSecureFetch from "../hooks/useSecureFetch";
+// import useSecureFetch from "../hooks/useSecureFetch";
 
 const customerTypeExtension = reactExtension(
   "purchase.checkout.delivery-address.render-before",
@@ -34,7 +34,7 @@ function CustomerTypeExtension() {
   const applyShippingAddressChange = useApplyShippingAddressChange();
   const [isValidatingVat, setIsValidatingVat] = useState(false);
   const [vatValidationResult, setVatValidationResult] = useState(null);
-  const secureFetch = useSecureFetch();
+  // const secureFetch = useSecureFetch();
   const customer = useCustomer();
 
   const handleSelectionChange = (value) => {
@@ -64,7 +64,8 @@ function CustomerTypeExtension() {
 
       setIsValidatingVat(true);
       try {
-        const data = await secureFetch("/api/validate-vat", "POST", { vatId: value });
+        // const data = await secureFetch("/api/validate-vat", "POST", { vatId: value });
+        const data = { success: false, message: "VAT validation temporarily disabled" };
         setVatValidationResult(data);
 
         if (data.success && data.data && data.data.company_name) {
@@ -99,14 +100,15 @@ function CustomerTypeExtension() {
     if (customer && customer.id && value) {
       console.log("Attempting to save company name to metafield for customer:", customer.id);
       try {
-        const response = await secureFetch("/api/set-metafield", "POST", {
-          customerId: customer.id,
-          namespace: "customer_b2b",
-          key: "company_name",
-          value: value,
-          type: "single_line_text_field"
-        });
-        console.log("Metafield save response:", response);
+        // const response = await secureFetch("/api/set-metafield", "POST", {
+        //   customerId: customer.id,
+        //   namespace: "customer_b2b",
+        //   key: "company_name",
+        //   value: value,
+        //   type: "single_line_text_field"
+        // });
+        // console.log("Metafield save response:", response);
+        console.log("Metafield save temporarily disabled");
       } catch (error) {
         console.error("Failed to save company name to metafield:", error);
       }
