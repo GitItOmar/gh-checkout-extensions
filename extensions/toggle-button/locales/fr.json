@@ -6,5 +6,8 @@
   "companyName": "Nom de la société",
   "validatingVatId": "Validation de la TVA...",
   "invalidVatIdFormat": "Format de la TVA invalide",
-  "failedToValidateVatId": "Erreur lors de la validation de la TVA"
+  "failedToValidateVatId": "Erreur lors de la validation de la TVA",
+  "invalidEmailAddress": "Adresse e-mail invalide",
+  "companyNameRequired": "Nom de la société est requis",
+  "vatIdRequired": "TVA est requis"
 }

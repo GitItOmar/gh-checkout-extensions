@@ -24,6 +24,7 @@ export = "customerTypeExtension"
 # Gives your extension access to directly query Shopify’s storefront API.
 # https://shopify.dev/docs/api/checkout-ui-extensions/unstable/configuration#api-access
 api_access = true
+block_progress = true
 
 # Gives your extension access to make external network calls, using the
 # JavaScript `fetch()` API. Learn more:

@@ -6,5 +6,8 @@
   "companyName": "Firmenname",
   "validatingVatId": "VAT ID wird überprüft...",
   "invalidVatIdFormat": "Ungültiges Format für die USt-IdNr.",
-  "failedToValidateVatId": "Fehler beim Überprüfen der USt-IdNr."
+  "failedToValidateVatId": "Fehler beim Überprüfen der USt-IdNr.",
+  "invalidEmailAddress": "Ungültige E-Mail-Adresse",
+  "companyNameRequired": "Firmenname ist erforderlich",
+  "vatIdRequired": "USt-IdNr. ist erforderlich"
 }

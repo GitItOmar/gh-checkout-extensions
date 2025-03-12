@@ -1,5 +1,8 @@
 import { createShopifyClient } from "../clients/shopifyClient.js";
-import { setCustomerMetafield } from "../services/shopifyService.js";
+import {
+  createCustomerByEmail,
+  setCustomerMetafield,
+} from "../services/shopifyService.js";
 import { getStoreCredentials } from "../utils/commonUtils.js";
 /**
  * Controller to set a customer metafield in Shopify
@@ -7,48 +10,47 @@ import { getStoreCredentials } from "../utils/commonUtils.js";
  * @param {Object} res - Express response object
  * @returns {Object} Response with status and data
  */
-export const setCustomerMetafieldController = async (req, res) => {
+export const setVatId = async (req, res) => {
   try {
-    const { customerId, namespace, key, value, type } = req.body;
-    const domain = req.headers.origin || req.headers.host;
+    let { customerId, email, value, shopifyDomain } = req.body;
 
     // Validate required fields
-    if (!customerId || !namespace || !key || !value || !type) {
+    if ((!customerId && !email) || !value || !shopifyDomain) {
       return res.status(400).json({
         success: false,
-        message: "Missing required fields: customerId, namespace, key, value, and type are required",
+        message:
+          "Missing required fields: customerId or email, value, and shopifyDomain are required",
       });
     }
 
-    if (!domain) {
-      return res.status(400).json({
-        success: false,
-        message: "Could not determine domain from request",
-      });
-    }
+    const { storeAccessToken } = getStoreCredentials(shopifyDomain);
 
-    const { storeHandle, storeAccessToken } = getStoreCredentials(domain);
-
-    // Create Shopify client
     const client = createShopifyClient({
-      shop: storeHandle,
+      shop: shopifyDomain,
       accessToken: storeAccessToken,
     });
 
-    // Set customer metafield
-    const customer = await setCustomerMetafield({
+    if (!customerId) {
+      const customer = await createCustomerByEmail({
+        email,
+        client,
+      });
+      customerId = customer.id;
+    }
+
+    const customerUpdate = await setCustomerMetafield({
       customerId,
-      namespace,
-      key,
+      namespace: "custom",
+      key: "vat_id",
       value,
-      type,
+      type: "single_line_text_field",
       client,
     });
 
     return res.status(200).json({
       success: true,
       message: "Customer metafield set successfully",
-      data: customer,
+      data: customerUpdate,
     });
   } catch (error) {
     return res.status(500).json({

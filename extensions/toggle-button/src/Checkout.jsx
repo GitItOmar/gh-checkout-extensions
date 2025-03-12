@@ -12,31 +12,61 @@ import {
   useApplyShippingAddressChange,
   Spinner,
   useCustomer,
+  useEmail,
+  useShop,
+  useBuyerJourneyIntercept,
 } from "@shopify/ui-extensions-react/checkout";
 import { useState } from "react";
-// import useSecureFetch from "../hooks/useSecureFetch";
+import useApiClient from "../hooks/useApiClient";
 
 const customerTypeExtension = reactExtension(
   "purchase.checkout.delivery-address.render-before",
-  () => {
-    return <CustomerTypeExtension />;
-  }
+  () => <CustomerTypeExtension />
 );
 
 export default customerTypeExtension;
 
 function CustomerTypeExtension() {
+  // Hooks
   const [customerType] = useAttributeValues(["customer_type"]);
   const applyAttributeChange = useApplyAttributeChange();
+  const applyShippingAddressChange = useApplyShippingAddressChange();
   const translate = useTranslate();
+  const apiClient = useApiClient();
+  const customer = useCustomer();
+  const email = useEmail();
+  const shop = useShop();
+
+  // State
   const [vatId, setVatId] = useState("");
   const [companyName, setCompanyName] = useState("");
-  const applyShippingAddressChange = useApplyShippingAddressChange();
   const [isValidatingVat, setIsValidatingVat] = useState(false);
   const [vatValidationResult, setVatValidationResult] = useState(null);
-  // const secureFetch = useSecureFetch();
-  const customer = useCustomer();
+  const [hasAttemptedContinue, setHasAttemptedContinue] = useState(false);
 
+  // Intercept buyer journey to validate B2B requirements
+  useBuyerJourneyIntercept(({ canBlockProgress }) => {
+    // Only block progress if customer type is B2B and required fields are missing
+    if (customerType === "b2b" && canBlockProgress) {
+      const isCompanyMissing = !companyName || companyName.trim() === "";
+      const isVatIdMissing = !vatId || vatId.trim() === "";
+      const isVatIdInvalid =
+        vatValidationResult && !vatValidationResult.success;
+
+      if (isCompanyMissing || isVatIdMissing || isVatIdInvalid) {
+        setHasAttemptedContinue(true);
+
+        return {
+          behavior: "block",
+          reason: "Missing or invalid business information"
+        };
+      }
+    }
+
+    return { behavior: "allow" };
+  });
+
+  // Customer type selection handler
   const handleSelectionChange = (value) => {
     applyAttributeChange({
       key: "customer_type",
@@ -45,90 +75,93 @@ function CustomerTypeExtension() {
     });
   };
 
-  const handleVatIdChange = (value) => {
-    setVatId(value);
-    setVatValidationResult(null);
-  };
-
-  const handleVatIdBlur = async (value) => {
-    if (value) {
-      // Basic validation before making the API request
-      const vatIdPattern = /^[A-Z]{2}[0-9A-Z+*]{2,12}$/;
-      if (!vatIdPattern.test(value)) {
-        setVatValidationResult({
-          success: false,
-          message: translate("invalidVatIdFormat"),
-        });
-        return;
-      }
-
-      setIsValidatingVat(true);
-      try {
-        // const data = await secureFetch("/api/validate-vat", "POST", { vatId: value });
-        const data = { success: false, message: "VAT validation temporarily disabled" };
-        setVatValidationResult(data);
-
-        if (data.success && data.data && data.data.company_name) {
-          // If VAT validation returns a company name, update the company field
-          console.log("VAT validation returned company name:", data.data.company_name);
-          setCompanyName(data.data.company_name);
-          handleCompanyNameBlur(data.data.company_name);
-        }
-      } catch (error) {
-        setVatValidationResult({
-          success: false,
-          message: translate("failedToValidateVatId"),
-        });
-      } finally {
-        setIsValidatingVat(false);
-      }
-    }
+  // Company name handlers
+  const handleCompanyNameChange = (value) => {
+    setCompanyName(value);
   };
 
   const handleCompanyNameBlur = async (value) => {
-    console.log("Company name blur event with value:", value);
-    // Update the company field in the shipping address only on blur
     applyShippingAddressChange({
       type: "updateShippingAddress",
       address: {
         company: value,
       },
     });
-    console.log("Applied shipping address change with company:", value);
+  };
 
-    // Save company name to customer metafield
-    if (customer && customer.id && value) {
-      console.log("Attempting to save company name to metafield for customer:", customer.id);
-      try {
-        // const response = await secureFetch("/api/set-metafield", "POST", {
-        //   customerId: customer.id,
-        //   namespace: "customer_b2b",
-        //   key: "company_name",
-        //   value: value,
-        //   type: "single_line_text_field"
-        // });
-        // console.log("Metafield save response:", response);
-        console.log("Metafield save temporarily disabled");
-      } catch (error) {
-        console.error("Failed to save company name to metafield:", error);
-      }
-    } else {
-      console.log("Skipping metafield save - missing data:", { 
-        hasCustomer: !!customer, 
-        customerId: customer?.id, 
-        companyValue: value 
+  // VAT ID handlers
+  const handleVatIdChange = (value) => {
+    setVatId(value);
+    setVatValidationResult(null);
+  };
+
+  const handleVatIdBlur = async (value) => {
+    if (!value) return;
+
+    // Validate email before proceeding
+    if (!isValidEmail(email)) {
+      setVatValidationResult({
+        success: false,
+        message: translate("invalidEmailAddress"),
       });
+      return;
+    }
+
+    // Basic validation before making the API request
+    if (!isValidVatIdFormat(value)) {
+      setVatValidationResult({
+        success: false,
+        message: translate("invalidVatIdFormat"),
+      });
+      return;
+    }
+
+    // Validate VAT ID with external service
+    await validateVatId(value);
+  };
+
+  // Helper functions
+  const isValidEmail = (email) => {
+    const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    return email && emailPattern.test(email);
+  };
+
+  const isValidVatIdFormat = (vatId) => {
+    const vatIdPattern = /^[A-Z]{2}[0-9A-Z+*]{2,12}$/;
+    return vatIdPattern.test(vatId);
+  };
+
+  const validateVatId = async (vatId) => {
+    setIsValidatingVat(true);
+
+    try {
+      const data = await apiClient("/api/validate-vat", "POST", { vatId });
+      setVatValidationResult(data);
+
+      if (data.success) {
+        await apiClient("/api/set-vat-id", "POST", {
+          customerId: customer?.id || null,
+          value: vatId,
+          email: email,
+          shopifyDomain: shop.myshopifyDomain,
+        });
+      }
+    } catch (error) {
+      setVatValidationResult({
+        success: false,
+        message: translate("failedToValidateVatId"),
+      });
+    } finally {
+      setIsValidatingVat(false);
     }
   };
 
-  const handleCompanyNameChange = (value) => {
-    console.log("Company name changed to:", value);
-    setCompanyName(value);
-  };
-
+  // Render UI
   return (
     <BlockStack>
       <Text size="base">{translate("customerTypeDescription")}</Text>
+
+      {/* Customer Type Selection */}
       <ChoiceList
         name="choice"
         value={customerType || "b2b"}
@@ -140,6 +173,7 @@ function CustomerTypeExtension() {
         </InlineStack>
       </ChoiceList>
 
+      {/* Business Customer Fields */}
       {customerType === "b2b" && (
         <BlockStack>
           <TextField
@@ -147,7 +181,15 @@ function CustomerTypeExtension() {
             value={companyName || ""}
             onChange={handleCompanyNameChange}
             onBlur={() => handleCompanyNameBlur(companyName || "")}
+            error={
+              hasAttemptedContinue &&
+              (!companyName || companyName.trim() === "")
+                ? translate("companyNameRequired")
+                : undefined
+            }
+            required
           />
+
           <TextField
             label={translate("vatId")}
             value={vatId || ""}
@@ -157,9 +199,13 @@ function CustomerTypeExtension() {
             error={
               vatValidationResult && !vatValidationResult.success
                 ? vatValidationResult.message
+                : hasAttemptedContinue && (!vatId || vatId.trim() === "")
+                ? translate("vatIdRequired")
                 : undefined
             }
+            required
           />
+
           {isValidatingVat && (
             <InlineStack spacing="tight" blockAlignment="center">
               <Spinner size="small" />

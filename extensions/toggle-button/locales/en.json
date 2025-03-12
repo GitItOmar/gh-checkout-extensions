@@ -6,5 +6,8 @@
   "companyName": "Company name",
   "validatingVatId": "Validating VAT ID...",
   "invalidVatIdFormat": "Invalid VAT ID format",
-  "failedToValidateVatId": "Failed to validate VAT ID"
+  "failedToValidateVatId": "Failed to validate VAT ID",
+  "invalidEmailAddress": "Invalid email address",
+  "companyNameRequired": "Company name is required",
+  "vatIdRequired": "VAT ID is required"
 }

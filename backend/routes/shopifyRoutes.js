@@ -1,9 +1,9 @@
 // routes/shopifyRoutes.js
 import express from "express";
-import { setCustomerMetafieldController } from "../controllers/shopifyController.js";
+import { setVatId } from "../controllers/shopifyController.js";
 
 const router = express.Router();
 
-router.post("/set-metafield", setCustomerMetafieldController);
+router.post("/set-vat-id", setVatId);
 
 export default router;
