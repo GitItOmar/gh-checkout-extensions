@@ -17,5 +17,6 @@ module.exports = {
         js: "always",
       },
     ],
+    "import/prefer-default-export": "off",
   },
 };

@@ -1,5 +1,3 @@
-// services/vatService.js
-import fetch from "node-fetch";
 import * as Sentry from "@sentry/node";
 
 const isProduction = process.env.NODE_ENV === "production";
