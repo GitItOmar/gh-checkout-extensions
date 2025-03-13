@@ -5,7 +5,7 @@ const useApiClient = () => {
     const bodyString = body ? JSON.stringify(body) : "";
 
     const response = await fetch(
-      `https://b5fd-87-145-168-57.ngrok-free.app${path}`,
+      `https://27c9-87-145-168-57.ngrok-free.app${path}`,
       {
         method,
         headers: {

@@ -1,41 +1,11 @@
 {
-  "name": "checkout-b2b",
+  "name": "checkout-b2b-root",
   "version": "1.0.0",
-  "license": "UNLICENSED",
-  "type": "module",
+  "engines": {
+    "node": "23.x"
+  },
   "scripts": {
-    "shopify": "shopify",
-    "build": "shopify app build",
-    "dev": "shopify app dev",
-    "info": "shopify app info",
-    "generate": "shopify app generate",
-    "deploy": "shopify app deploy",
-    "backend": "nodemon backend/index.js"
-  },
-  "trustedDependencies": [
-    "@shopify/plugin-cloudflare"
-  ],
-  "author": "omarghanaim",
-  "private": true,
-  "workspaces": [
-    "extensions/*"
-  ],
-  "devDependencies": {
-    "eslint": "^8.57.1",
-    "eslint-config-airbnb-base": "^15.0.0",
-    "eslint-config-prettier": "^10.1.1",
-    "eslint-plugin-import": "^2.31.0",
-    "nodemon": "^3.1.9"
-  },
-  "dependencies": {
-    "@sentry/node": "^9.5.0",
-    "@shopify/admin-api-client": "^1.0.6",
-    "cors": "^2.8.5",
-    "dotenv": "^16.4.7",
-    "express": "^4.21.2",
-    "express-rate-limit": "^7.5.0",
-    "graphql-tag": "^2.12.6",
-    "helmet": "^8.0.0",
-    "morgan": "^1.10.0"
+    "start": "cd backend && npm start",
+    "heroku-postbuild": "cd backend && npm install"
   }
 }

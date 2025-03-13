@@ -5,10 +5,10 @@ import helmet from "helmet";
 import morgan from "morgan";
 import "dotenv/config";
 import * as Sentry from "@sentry/node";
+import rateLimit from "express-rate-limit";
 import vatRoutes from "./routes/vatRoutes.js";
 import "./instrument.js";
 import shopifyRoutes from "./routes/shopifyRoutes.js";
-import rateLimit from "express-rate-limit";
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -61,13 +61,14 @@ if (isProduction) {
   Sentry.setupExpressErrorHandler(app);
 }
 
+// eslint-disable-next-line no-unused-vars
 app.use((err, req, res, _next) => {
   res.statusCode = 500;
   res.end(`${res.sentry || "Internal Server Error"}\n`);
 });
 
 app.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`);
+  console.log(`Server is running on port ${PORT}`);
 });
 
 export default app;

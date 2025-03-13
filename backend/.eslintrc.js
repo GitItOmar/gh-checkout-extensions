@@ -2,7 +2,6 @@ module.exports = {
   env: {
     browser: true,
     es2021: true,
-    node: true,
   },
   extends: ["airbnb-base", "prettier"],
   overrides: [],
@@ -11,8 +10,12 @@ module.exports = {
     sourceType: "module",
   },
   rules: {
-    "import/extensions": ["error", "ignorePackages", {
-      "js": "always"
-    }]
+    "import/extensions": [
+      "error",
+      "ignorePackages",
+      {
+        js: "always",
+      },
+    ],
   },
 };
