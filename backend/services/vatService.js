@@ -1,69 +1,69 @@
 import * as Sentry from "@sentry/node";
 
 const isProduction = process.env.NODE_ENV === "production";
+const VAT_ID_PATTERN = /^[A-Z]{2}[0-9A-Z+*]{2,12}$/;
 
-export const validateVat = async (vatId) => {
-  const vatIdPattern = /^[A-Z]{2}[0-9A-Z+*]{2,12}$/;
-  if (!vatIdPattern.test(vatId)) {
-    return {
-      status: 400,
-      response: {
-        success: false,
-        message:
-          "Invalid VAT ID format. VAT ID should start with a 2-letter country code followed by numbers.",
-      },
-    };
-  }
-
-  const apiKey = process.env.VATCHECKAPI_KEY;
-  const apiUrl = `https://api.vatcheckapi.com/v2/check?vat_number=${encodeURIComponent(
-    vatId
-  )}`;
-
-  const response = await fetch(apiUrl, {
-    headers: {
-      apikey: apiKey,
+const createErrorResponse = (status, message) => {
+  return {
+    status,
+    response: {
+      success: false,
+      message,
     },
-  });
+  };
+};
 
-  if (response.status === 429) {
+const validateVatFormat = (vatId) => {
+  if (!VAT_ID_PATTERN.test(vatId)) {
+    return createErrorResponse(
+      400,
+      "Invalid VAT ID format. VAT ID should start with a 2-letter country code followed by numbers."
+    );
+  }
+  return null;
+};
+
+const validateWithVatlayer = async (vatId) => {
+  const apiKey = process.env.VATLAYER_API_KEY;
+  const apiUrl = `https://apilayer.net/api/validate?access_key=${apiKey}&vat_number=${vatId}`;
+  
+  const response = await fetch(apiUrl);
+  const data = await response.json();
+
+  if (!data.valid) {
     if (isProduction) {
       Sentry.captureMessage(
-        "Rate limit exceeded from VAT validation API",
-        "warning"
+        `VAT API error: ${data.error?.info || "Unknown error"}`,
+        "error"
       );
     }
-    return {
-      status: 429,
-      response: {
-        success: false,
-        message: "Rate limit exceeded. Please try again later.",
-      },
-    };
+    return createErrorResponse(500, "Failed to validate VAT ID");
   }
-
-  if (response.status === 401 || response.status === 403) {
-    if (isProduction) {
-      Sentry.captureMessage("Invalid or unauthorized VAT API key", "error");
-    }
-    return {
-      status: 500,
-      response: {
-        success: false,
-        message: "Server configuration error",
-      },
-    };
-  }
-
-  const data = await response.json();
-  const isValid = data.checksum_valid === true;
 
   return {
     status: 200,
     response: {
-      success: isValid,
+      success: true,
       data,
-      message: isValid ? undefined : "Invalid VAT ID",
+      message: undefined,
     },
   };
+};
+
+export const validateVat = async (vatId, service) => {
+  // Validate format first
+  const formatError = validateVatFormat(vatId);
+  if (formatError) {
+    return formatError;
+  }
+
+  try {
+    const result = await validateWithVatlayer(vatId);
+    return result;
+  } catch (error) {
+    if (isProduction) {
+      Sentry.captureException(error);
+    }
+    return createErrorResponse(500, "Failed to validate VAT ID");
+  }
 };

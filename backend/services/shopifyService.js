@@ -65,6 +65,58 @@ export const setCustomerMetafield = async ({
 };
 
 /**
+ * Updates a customer's tax exemption status in Shopify
+ * @param {Object} params - Parameters for updating tax exemption
+ * @param {string} params.customerId - Customer's ID
+ * @param {string} params.taxExemption - Tax exemption status (e.g., "EXEMPT", "NOT_EXEMPT")
+ * @param {Object} params.client - Shopify GraphQL client
+ * @returns {Promise<Object>} The updated customer data
+ */
+export const updateCustomerTaxExemption = async ({
+  customerId,
+  taxExemption,
+  client,
+}) => {
+  if (!customerId) {
+    throw new Error("Customer ID is required to update tax exemption");
+  }
+
+  if (!taxExemption) {
+    throw new Error("Tax exemption status is required");
+  }
+
+  const operation = gql`
+    mutation customerUpdate($input: CustomerInput!) {
+      customerUpdate(input: $input) {
+        customer {
+          id
+          taxExempt
+          taxExemptions
+        }
+        userErrors {
+          field
+          message
+        }
+      }
+    }
+  `;
+
+  const { data, errors } = await client.request(operation?.loc.source.body, {
+    variables: {
+      input: {
+        id: customerId,
+        taxExempt: taxExemption === "EXEMPT",
+      },
+    },
+  });
+
+  handleGraphQLResponseErrors(errors);
+  handleGraphQLUserErrors(data.customerUpdate.userErrors);
+
+  return data.customerUpdate.customer;
+};
+
+/**
  * Creates or retrieves a customer in Shopify using an email address
  * @param {Object} params - Parameters for creating/retrieving a customer
  * @param {string} params.email - Customer's email address

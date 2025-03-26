@@ -3,7 +3,7 @@ import { validateVat } from "../services/vatService.js";
 
 export const validateVatController = async (req, res) => {
   try {
-    const { vatId } = req.body;
+    const { vatId, service } = req.body;
 
     if (!vatId) {
       return res.status(400).json({
@@ -12,7 +12,7 @@ export const validateVatController = async (req, res) => {
       });
     }
 
-    const result = await validateVat(vatId);
+    const result = await validateVat(vatId, service);
     return res.status(result.status).json(result.response);
   } catch (error) {
     return res.status(500).json({

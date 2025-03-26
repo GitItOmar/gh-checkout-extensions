@@ -26,7 +26,6 @@ export function run(input) {
         hide: { paymentMethodId: method.id }
       }));
 
-    console.log('B2C customer - hiding Billie payment method:', hideOperations);
     return {
       operations: hideOperations
     };
@@ -39,12 +38,10 @@ export function run(input) {
         hide: { paymentMethodId: method.id }
       }));
 
-    console.log('B2B customer - hiding Klarna payment method:', hideOperations);
     return {
       operations: hideOperations
     };
   }
 
-  console.log('No customer type detected - no payment methods hidden');
   return NO_CHANGES;
 }

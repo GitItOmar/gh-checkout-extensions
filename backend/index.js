@@ -1,9 +1,9 @@
 // backend/index.js
+import "dotenv/config";
 import express from "express";
 import cors from "cors";
 import helmet from "helmet";
 import morgan from "morgan";
-import "dotenv/config";
 import * as Sentry from "@sentry/node";
 import rateLimit from "express-rate-limit";
 import vatRoutes from "./routes/vatRoutes.js";
@@ -13,21 +13,6 @@ import shopifyRoutes from "./routes/shopifyRoutes.js";
 const app = express();
 const PORT = process.env.PORT || 3000;
 const isProduction = process.env.NODE_ENV === "production";
-
-if (!process.env.VATCHECKAPI_KEY) {
-  console.error("ERROR: VATCHECKAPI_KEY environment variable is not set");
-  if (isProduction) {
-    Sentry.captureMessage(
-      "VATCHECKAPI_KEY environment variable is not set",
-      "fatal"
-    );
-  }
-  process.exit(1);
-}
-
-if (isProduction) {
-  Sentry.setupExpressErrorHandler(app);
-}
 
 app.use(cors());
 app.use(helmet());
@@ -67,8 +52,6 @@ app.use((err, req, res, _next) => {
   res.end(`${res.sentry || "Internal Server Error"}\n`);
 });
 
-app.listen(PORT, () => {
-  console.log(`Server is running on port ${PORT}`);
-});
+app.listen(PORT);
 
 export default app;

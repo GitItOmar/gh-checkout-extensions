@@ -17,7 +17,7 @@ type = "ui_extension"
 
 [[extensions.targeting]]
 module = "./src/Checkout.jsx"
-target = "purchase.checkout.delivery-address.render-before"
+target = "purchase.checkout.block.render"
 export = "customerTypeExtension"
 
 [extensions.capabilities]
@@ -41,6 +41,10 @@ network_access = true
 # [[extensions.metafields]]
 # namespace = "my_namespace"
 # key = "my_other_key"
+
+[[extensions.metafields]]
+namespace = "custom"
+key = "vat_id"
 
 # Defines settings that will be collected from merchants installing
 # your extension. Learn more:
