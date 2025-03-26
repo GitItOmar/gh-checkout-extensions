@@ -16,9 +16,6 @@ import {
   useShop,
   useBuyerJourneyIntercept,
   useApplyMetafieldsChange,
-  useInstructions,
-  useApplyCartLinesChange,
-  useCartLines
 } from "@shopify/ui-extensions-react/checkout";
 import { useState, useEffect } from "react";
 import useApiClient from "../hooks/useApiClient";
@@ -41,8 +38,7 @@ function CustomerTypeExtension() {
   const customer = useCustomer();
   const email = useEmail();
   const shop = useShop();
-  const applyCartLinesChange = useApplyCartLinesChange();
-  const cartLines = useCartLines();
+
   // State
   const [vatId, setVatId] = useState("");
   const [companyName, setCompanyName] = useState("");
@@ -52,47 +48,82 @@ function CustomerTypeExtension() {
   const [validatedVatIds, setValidatedVatIds] = useState(new Set());
   const [isVatValidated, setIsVatValidated] = useState(false);
 
+  // Effect to check if customer already has a VAT ID and set as B2B if they do
+  useEffect(() => {
+    const checkExistingVatId = async () => {
+      if (customer?.id || email) {
+        try {
+          const response = await apiClient("/api/get-customer-vat-id", "POST", {
+            customerId: customer?.id || null,
+            email: email,
+            shopifyDomain: shop.myshopifyDomain,
+          });
+          
+          if (response.success && response.vatId) {
+            setVatId(response.vatId);
+            setIsVatValidated(true);
+            setValidatedVatIds(new Set([response.vatId]));
+            
+            // Set customer type to B2B if they have a VAT ID
+            applyAttributeChange({
+              key: "customer_type",
+              value: "b2b",
+              type: "updateAttribute",
+            });
+            
+            // If they have company name, set it too
+            if (response.companyName) {
+              setCompanyName(response.companyName);
+              applyShippingAddressChange({
+                type: "updateShippingAddress",
+                address: {
+                  company: response.companyName,
+                },
+              });
+            }
+          }
+        } catch (error) {
+          console.error("Error fetching customer VAT ID:", error);
+        }
+      }
+    };
+    
+    checkExistingVatId();
+  }, [customer, email, shop]);
+
   // Effect to handle setting VAT ID and exempting customer when email becomes valid
   useEffect(() => {
     const handleValidEmailWithValidVat = async () => {
-      if (isVatValidated && isValidEmail(email) && vatId && vatValidationResult?.success) {
+      if (
+        isVatValidated &&
+        isValidEmail(email) &&
+        vatId &&
+        vatValidationResult?.success
+      ) {
         try {
           // Update the checkout metafield with the validated VAT ID
           await applyMetafieldsChange({
             type: "updateMetafield",
-            namespace: "custom",
-            key: "vat_id",
+            namespace: "checkoutblocks",
+            key: "umsatzsteuer_identifikationsnu",
             valueType: "string",
-            value: vatId
+            value: vatId,
           });
-          
+
           const vatResponse = await apiClient("/api/set-vat-id", "POST", {
             customerId: customer?.id || null,
             value: vatId,
             email: email,
             shopifyDomain: shop.myshopifyDomain,
           });
-          
+
           const customerId = vatResponse.data?.id || customer?.id;
-          
+
           if (customerId) {
             await apiClient("/api/exempt-customer-from-taxes", "POST", {
               customerId: customerId,
               shopifyDomain: shop.myshopifyDomain,
             });
-            
-            // Force Shopify checkout to recalculate taxes by updating cart lines
-            // This triggers a tax recalculation without changing the actual items
-            const cartLinesUpdate = await applyCartLinesChange({
-              type: "updateCartLine",
-              id: cartLines[0].id, // First cart line
-              quantity: 2,
-              merchandiseId: null // Keep the same merchandise
-            });
-
-            if (cartLinesUpdate.type !== "success") {
-              console.error("Failed to trigger tax recalculation:", cartLinesUpdate.errors);
-            }
           }
         } catch (error) {
           console.error("Error setting VAT ID or exempting customer:", error);
@@ -101,7 +132,14 @@ function CustomerTypeExtension() {
     };
 
     handleValidEmailWithValidVat();
-  }, [email, isVatValidated, vatId, vatValidationResult, customer, shop, applyMetafieldsChange, apiClient, applyCartLinesChange]);
+  }, [
+    email,
+    isVatValidated,
+    vatId,
+    vatValidationResult,
+    customer,
+    shop,
+  ]);
 
   // Intercept buyer journey to validate B2B requirements
   useBuyerJourneyIntercept(({ canBlockProgress }) => {
@@ -116,7 +154,7 @@ function CustomerTypeExtension() {
 
         return {
           behavior: "block",
-          reason: "Missing or invalid business information"
+          reason: "Missing or invalid business information",
         };
       }
     }
@@ -193,12 +231,14 @@ function CustomerTypeExtension() {
     setIsValidatingVat(true);
 
     try {
-      const data = await apiClient("/api/validate-vat", "POST", { vatId, service: "vatlayer" });
+      const data = await apiClient("/api/validate-vat", "POST", {
+        vatId
+      });
       setVatValidationResult(data);
 
       if (data.success) {
         // Add to set of validated VAT IDs for this session
-        setValidatedVatIds(prev => new Set(prev).add(vatId));
+        setValidatedVatIds((prev) => new Set(prev).add(vatId));
         setIsVatValidated(true);
       }
     } catch (error) {

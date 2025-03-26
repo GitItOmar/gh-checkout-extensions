@@ -3,6 +3,7 @@ import {
   createCustomerByEmail,
   setCustomerMetafield,
   updateCustomerTaxExemption,
+  getCustomerByEmailOrId,
 } from "../services/shopifyService.js";
 import { getStoreCredentials } from "../utils/commonUtils.js";
 
@@ -105,6 +106,59 @@ export const exemptCustomerFromTaxes = async (req, res) => {
     return res.status(500).json({
       success: false,
       message: "Failed to exempt customer from taxes",
+      error: process.env.NODE_ENV === "development" ? error.message : undefined,
+    });
+  }
+};
+/**
+ * Retrieves a customer's VAT ID from Shopify
+ * @param {Object} req - Express request object
+ * @param {Object} res - Express response object
+ * @returns {Object} JSON response with VAT ID
+ */
+export const getCustomerVatId = async (req, res) => {
+  try {
+    const { customerId, email, shopifyDomain } = req.body;
+
+    // Validate required fields
+    if (!customerId && !email) {
+      return res.status(400).json({
+        success: false,
+        message: "Missing required fields: customerId or email",
+      });
+    }
+
+    if (!shopifyDomain) {
+      return res.status(400).json({
+        success: false,
+        message: "Missing required field: shopifyDomain",
+      });
+    }
+
+    const { storeAccessToken } = getStoreCredentials(shopifyDomain);
+
+    const client = createShopifyClient({
+      shop: shopifyDomain,
+      accessToken: storeAccessToken,
+    });
+
+    const customer = await getCustomerByEmailOrId({
+      email,
+      client,
+      customerId,
+    });
+
+    const vatMetafield = customer?.metafield?.value;
+
+    return res.status(200).json({
+      success: true,
+      message: "Customer VAT ID retrieved successfully",
+      vatId: vatMetafield,
+    });
+  } catch (error) {
+    return res.status(500).json({
+      success: false,
+      message: "Failed to get customer VAT ID",
       error: process.env.NODE_ENV === "development" ? error.message : undefined,
     });
   }

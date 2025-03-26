@@ -43,8 +43,8 @@ network_access = true
 # key = "my_other_key"
 
 [[extensions.metafields]]
-namespace = "custom"
-key = "vat_id"
+namespace = "checkoutblocks"
+key = "umsatzsteuer_identifikationsnu"
 
 # Defines settings that will be collected from merchants installing
 # your extension. Learn more:

@@ -1,5 +1,8 @@
 import { gql } from "graphql-tag";
-import { handleGraphQLResponseErrors, handleGraphQLUserErrors } from "../utils/errorUtils.js";
+import {
+  handleGraphQLResponseErrors,
+  handleGraphQLUserErrors,
+} from "../utils/errorUtils.js";
 
 /**
  * Sets a customer metafield in Shopify
@@ -123,10 +126,7 @@ export const updateCustomerTaxExemption = async ({
  * @param {Object} params.client - Shopify GraphQL client
  * @returns {Promise<Object>} The customer data
  */
-export const createCustomerByEmail = async ({
-  email,
-  client,
-}) => {
+export const createCustomerByEmail = async ({ email, client }) => {
   if (!email) {
     throw new Error("Email is required to create or retrieve a customer");
   }
@@ -145,11 +145,14 @@ export const createCustomerByEmail = async ({
     }
   `;
 
-  const { data: findData, errors: findErrors } = await client.request(findOperation?.loc.source.body, {
-    variables: {
-      query: `email:${email}`,
-    },
-  });
+  const { data: findData, errors: findErrors } = await client.request(
+    findOperation?.loc.source.body,
+    {
+      variables: {
+        query: `email:${email}`,
+      },
+    }
+  );
 
   handleGraphQLResponseErrors(findErrors);
 
@@ -174,16 +177,94 @@ export const createCustomerByEmail = async ({
     }
   `;
 
-  const { data, errors } = await client.request(createOperation?.loc.source.body, {
-    variables: {
-      input: {
-        email,
+  const { data, errors } = await client.request(
+    createOperation?.loc.source.body,
+    {
+      variables: {
+        input: {
+          email,
+        },
       },
-    },
-  });
+    }
+  );
 
   handleGraphQLResponseErrors(errors);
   handleGraphQLUserErrors(data.customerCreate.userErrors);
 
   return data.customerCreate.customer;
+};
+
+/**
+ * Retrieves a customer by email or ID from Shopify
+ * @param {Object} params - Parameters for retrieving a customer
+ * @param {string} params.email - Customer's email address
+ * @param {string} params.customerId - Customer's ID
+ * @param {Object} params.client - Shopify GraphQL client
+ * @returns {Promise<Object>} The customer data
+ */
+export const getCustomerByEmailOrId = async ({ email, customerId, client }) => {
+  if (!email && !customerId) {
+    throw new Error("Email or customer ID is required");
+  }
+
+  // If we have a customerId, use the node query
+  if (customerId) {
+    const nodeOperation = gql`
+      query getCustomer($id: ID!) {
+        node(id: $id) {
+          ... on Customer {
+            id
+            email
+            metafield(namespace: "custom", key: "vat_id") {
+              namespace
+              key
+              value
+            }
+          }
+        }
+      }
+    `;
+
+    const { data, errors } = await client.request(nodeOperation?.loc.source.body, {
+      variables: {
+        id: customerId,
+      },
+    });
+    
+    handleGraphQLResponseErrors(errors);
+    return data.node;
+  }
+
+  // If we only have email, use the customers query
+  const customerOperation = gql`
+    query getCustomerByEmail($query: String!) {
+      customers(first: 1, query: $query) {
+        edges {
+          node {
+            id
+            email
+            metafield(namespace: "custom", key: "vat_id") {
+              namespace
+              key
+              value
+            }
+          }
+        }
+      }
+    }
+  `;
+
+  const { data, errors } = await client.request(customerOperation?.loc.source.body, {
+    variables: {
+      query: `email:${email}`,
+    },
+  });
+  
+  handleGraphQLResponseErrors(errors);
+
+  if (data.customers.edges.length === 0) {
+    throw new Error(`Customer with email ${email} not found`);
+  }
+
+  return data.customers.edges[0].node;
 };
