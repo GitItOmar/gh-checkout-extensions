@@ -16,15 +16,15 @@ const NO_CHANGES = {
  * @param {RunInput} input
  * @returns {FunctionRunResult}
  */
-export function run(input) {
-  // Log payment methods for debugging
-  console.log('Available payment methods:', JSON.stringify(input.paymentMethods, null, 2));
-  
+export function run(input) {  
   const customerType = input?.cart?.attribute?.value;
 
   if (customerType === "b2c") {
     const hideOperations = input.paymentMethods
-      .filter(method => method.name === "Rechnungskauf für Firmenkunden")
+      .filter(method => 
+        method.name === "Rechnungskauf für Firmenkunden" || 
+        method.name === "Billie"
+      )
       .map(method => ({
         hide: { paymentMethodId: method.id }
       }));
