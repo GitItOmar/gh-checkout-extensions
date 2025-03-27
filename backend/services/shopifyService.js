@@ -232,6 +232,11 @@ export const getCustomerByEmailOrId = async ({ email, customerId, client }) => {
     });
     
     handleGraphQLResponseErrors(errors);
+    
+    if (!data.node) {
+      return null;
+    }
+    
     return data.node;
   }
 
@@ -263,7 +268,7 @@ export const getCustomerByEmailOrId = async ({ email, customerId, client }) => {
   handleGraphQLResponseErrors(errors);
 
   if (data.customers.edges.length === 0) {
-    throw new Error(`Customer with email ${email} not found`);
+    return null;
   }
 
   return data.customers.edges[0].node;

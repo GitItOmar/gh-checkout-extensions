@@ -5,7 +5,7 @@ const useApiClient = () => {
     const bodyString = body ? JSON.stringify(body) : "";
 
     const response = await fetch(
-      `https://gh-custom-checkout-extensions-225fe25bc698.herokuapp.com${path}`,
+      `https://daf2-87-145-168-57.ngrok-free.app${path}`,
       {
         method,
         headers: {

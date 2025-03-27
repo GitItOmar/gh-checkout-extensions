@@ -17,6 +17,9 @@ const NO_CHANGES = {
  * @returns {FunctionRunResult}
  */
 export function run(input) {
+  // Log payment methods for debugging
+  console.log('Available payment methods:', JSON.stringify(input.paymentMethods, null, 2));
+  
   const customerType = input?.cart?.attribute?.value;
 
   if (customerType === "b2c") {

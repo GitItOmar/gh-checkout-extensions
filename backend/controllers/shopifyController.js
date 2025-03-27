@@ -148,6 +148,15 @@ export const getCustomerVatId = async (req, res) => {
       customerId,
     });
 
+    // Handle case where customer is not found
+    if (!customer) {
+      return res.status(404).json({
+        success: false,
+        message: "Customer not found",
+        vatId: null,
+      });
+    }
+
     const vatMetafield = customer?.metafield?.value;
 
     return res.status(200).json({

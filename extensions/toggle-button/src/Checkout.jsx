@@ -51,6 +51,7 @@ function CustomerTypeExtension() {
   // Effect to check if customer already has a VAT ID and set as B2B if they do
   useEffect(() => {
     const checkExistingVatId = async () => {
+      // Check for existing VAT ID when email changes
       if (customer?.id || email) {
         try {
           const response = await apiClient("/api/get-customer-vat-id", "POST", {
@@ -58,38 +59,42 @@ function CustomerTypeExtension() {
             email: email,
             shopifyDomain: shop.myshopifyDomain,
           });
-          
-          if (response.success && response.vatId) {
+
+          // Only update if the user hasn't manually entered a VAT ID in this session
+          // or if we don't have validation results yet
+          if (
+            response.success &&
+            response.vatId &&
+            (!vatId || !vatValidationResult)
+          ) {
             setVatId(response.vatId);
             setIsVatValidated(true);
             setValidatedVatIds(new Set([response.vatId]));
-            
+
             // Set customer type to B2B if they have a VAT ID
             applyAttributeChange({
               key: "customer_type",
               value: "b2b",
               type: "updateAttribute",
             });
-            
-            // If they have company name, set it too
-            if (response.companyName) {
-              setCompanyName(response.companyName);
-              applyShippingAddressChange({
-                type: "updateShippingAddress",
-                address: {
-                  company: response.companyName,
-                },
-              });
-            }
+
+            // Set the checkout metafield with the retrieved VAT ID
+            await applyMetafieldsChange({
+              type: "updateMetafield",
+              namespace: "checkoutblocks",
+              key: "umsatzsteuer_identifikationsnu",
+              valueType: "string",
+              value: response.vatId,
+            });
           }
         } catch (error) {
-          console.error("Error fetching customer VAT ID:", error);
+          // Error handling
         }
       }
     };
-    
+
     checkExistingVatId();
-  }, [customer, email, shop]);
+  }, [email]); // Only run when email changes
 
   // Effect to handle setting VAT ID and exempting customer when email becomes valid
   useEffect(() => {
@@ -126,30 +131,22 @@ function CustomerTypeExtension() {
             });
           }
         } catch (error) {
-          console.error("Error setting VAT ID or exempting customer:", error);
+          // Error handling
         }
       }
     };
 
     handleValidEmailWithValidVat();
-  }, [
-    email,
-    isVatValidated,
-    vatId,
-    vatValidationResult,
-    customer,
-    shop,
-  ]);
+  }, [email, isVatValidated, vatId, vatValidationResult, customer, shop]);
 
   // Intercept buyer journey to validate B2B requirements
   useBuyerJourneyIntercept(({ canBlockProgress }) => {
     if (customerType === "b2b" && canBlockProgress) {
       const isCompanyMissing = !companyName || companyName.trim() === "";
-      const isVatIdMissing = !vatId || vatId.trim() === "";
       const isVatIdInvalid =
-        vatValidationResult && !vatValidationResult.success;
+        vatId && vatValidationResult && !vatValidationResult.success;
 
-      if (isCompanyMissing || isVatIdMissing || isVatIdInvalid) {
+      if (isCompanyMissing || isVatIdInvalid) {
         setHasAttemptedContinue(true);
 
         return {
@@ -212,6 +209,15 @@ function CustomerTypeExtension() {
       return;
     }
 
+    // Check if it's a French VAT ID (starts with FR)
+    if (!value.startsWith("FR")) {
+      setVatValidationResult({
+        success: false,
+        message: translate("onlyFrenchVatSupported"),
+      });
+      return;
+    }
+
     // Validate VAT ID with external service
     await validateVatId(value);
   };
@@ -232,7 +238,7 @@ function CustomerTypeExtension() {
 
     try {
       const data = await apiClient("/api/validate-vat", "POST", {
-        vatId
+        vatId,
       });
       setVatValidationResult(data);
 
@@ -242,7 +248,6 @@ function CustomerTypeExtension() {
         setIsVatValidated(true);
       }
     } catch (error) {
-      console.error("Error validating VAT ID:", error);
       setVatValidationResult({
         success: false,
         message: translate("failedToValidateVatId"),
@@ -294,11 +299,8 @@ function CustomerTypeExtension() {
             error={
               vatValidationResult && !vatValidationResult.success
                 ? vatValidationResult.message
-                : hasAttemptedContinue && (!vatId || vatId.trim() === "")
-                ? translate("vatIdRequired")
                 : undefined
             }
-            required
           />
 
           {isValidatingVat && (

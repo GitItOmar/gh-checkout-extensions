@@ -9,5 +9,6 @@
   "failedToValidateVatId": "Fehler beim Überprüfen der USt-IdNr.",
   "invalidEmailAddress": "Ungültige E-Mail-Adresse",
   "companyNameRequired": "Firmenname ist erforderlich",
-  "vatIdRequired": "USt-IdNr. ist erforderlich"
+  "vatIdRequired": "USt-IdNr. ist erforderlich",
+  "onlyFrenchVatSupported": "Nur französische USt-IdNr. werden unterstützt"
 }

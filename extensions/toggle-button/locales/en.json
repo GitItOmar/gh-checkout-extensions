@@ -9,5 +9,6 @@
   "failedToValidateVatId": "Failed to validate VAT ID",
   "invalidEmailAddress": "Invalid email address",
   "companyNameRequired": "Company name is required",
-  "vatIdRequired": "VAT ID is required"
+  "vatIdRequired": "VAT ID is required",
+  "onlyFrenchVatSupported": "Only French VAT IDs are supported"
 }
