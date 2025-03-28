@@ -125,8 +125,15 @@ function CustomerTypeExtension() {
             shopifyDomain: shop.myshopifyDomain,
           });
 
-          // Only exempt from taxes if shipping country is not France
-          if (shippingAddress?.countryCode !== "FR") {
+          // Determine if we should exempt from taxes based on store and VAT country
+          const isFrenchStore = shop.myshopifyDomain.includes("gastro-hero-france");
+          const isGermanStore = shop.myshopifyDomain.includes("gastrohero-germany");
+          const vatCountryCode = vatId.substring(0, 2);
+          const shouldExempt = 
+            (isFrenchStore && vatCountryCode === "FR") || 
+            (isGermanStore && vatCountryCode === "DE" && shippingAddress?.countryCode === "DE");
+
+          if (shouldExempt) {
             const customerId = vatResponse.data?.id || customer?.id;
 
             if (customerId) {
