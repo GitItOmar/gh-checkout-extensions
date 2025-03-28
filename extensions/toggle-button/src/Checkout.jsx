@@ -16,6 +16,7 @@ import {
   useShop,
   useBuyerJourneyIntercept,
   useApplyMetafieldsChange,
+  useShippingAddress,
 } from "@shopify/ui-extensions-react/checkout";
 import { useState, useEffect } from "react";
 import useApiClient from "../hooks/useApiClient";
@@ -38,6 +39,7 @@ function CustomerTypeExtension() {
   const customer = useCustomer();
   const email = useEmail();
   const shop = useShop();
+  const shippingAddress = useShippingAddress();
 
   // State
   const [vatId, setVatId] = useState("");
@@ -96,7 +98,7 @@ function CustomerTypeExtension() {
     checkExistingVatId();
   }, [email]); // Only run when email changes
 
-  // Effect to handle setting VAT ID and exempting customer when email becomes valid
+  // Effect to handle setting VAT ID when email becomes valid
   useEffect(() => {
     const handleValidEmailWithValidVat = async () => {
       if (
@@ -115,6 +117,7 @@ function CustomerTypeExtension() {
             value: vatId,
           });
 
+          // Save the VAT ID to the customer
           const vatResponse = await apiClient("/api/set-vat-id", "POST", {
             customerId: customer?.id || null,
             value: vatId,
@@ -122,13 +125,16 @@ function CustomerTypeExtension() {
             shopifyDomain: shop.myshopifyDomain,
           });
 
-          const customerId = vatResponse.data?.id || customer?.id;
+          // Only exempt from taxes if shipping country is not France
+          if (shippingAddress?.countryCode !== "FR") {
+            const customerId = vatResponse.data?.id || customer?.id;
 
-          if (customerId) {
-            await apiClient("/api/exempt-customer-from-taxes", "POST", {
-              customerId: customerId,
-              shopifyDomain: shop.myshopifyDomain,
-            });
+            if (customerId) {
+              await apiClient("/api/exempt-customer-from-taxes", "POST", {
+                customerId: customerId,
+                shopifyDomain: shop.myshopifyDomain,
+              });
+            }
           }
         } catch (error) {
           // Error handling
@@ -137,7 +143,7 @@ function CustomerTypeExtension() {
     };
 
     handleValidEmailWithValidVat();
-  }, [email, isVatValidated, vatId, vatValidationResult, customer, shop]);
+  }, [email, isVatValidated, vatId, vatValidationResult, customer, shop, shippingAddress]);
 
   // Intercept buyer journey to validate B2B requirements
   useBuyerJourneyIntercept(({ canBlockProgress }) => {
@@ -205,15 +211,6 @@ function CustomerTypeExtension() {
       setVatValidationResult({
         success: false,
         message: translate("invalidVatIdFormat"),
-      });
-      return;
-    }
-
-    // Check if it's a French VAT ID (starts with FR)
-    if (!value.startsWith("FR")) {
-      setVatValidationResult({
-        success: false,
-        message: translate("onlyFrenchVatSupported"),
       });
       return;
     }
