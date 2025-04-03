@@ -9,6 +9,6 @@
   "failedToValidateVatId": "Erreur lors de la validation de la TVA",
   "invalidEmailAddress": "Adresse e-mail invalide",
   "companyNameRequired": "Nom de la société est requis",
-  "vatIdRequired": "TVA est requis",
-  "onlyFrenchVatSupported": "Seules les TVA françaises sont supportées"
+  "invalidVatId": "TVA invalide",
+  "vatServiceUnavailable": "Le service de validation de la TVA est actuellement indisponible"
 }

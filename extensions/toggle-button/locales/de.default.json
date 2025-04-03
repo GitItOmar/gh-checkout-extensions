@@ -7,8 +7,8 @@
   "validatingVatId": "VAT ID wird überprüft...",
   "invalidVatIdFormat": "Ungültiges Format für die USt-IdNr.",
   "failedToValidateVatId": "Fehler beim Überprüfen der USt-IdNr.",
-  "invalidEmailAddress": "Ungültige E-Mail-Adresse",
+  "invalidVatId": "Ungültige USt-IdNr.",
+  "vatServiceUnavailable": "Der USt-IdNr.-Validierungsdienst ist derzeit nicht verfügbar.",
   "companyNameRequired": "Firmenname ist erforderlich",
-  "vatIdRequired": "USt-IdNr. ist erforderlich",
-  "onlyFrenchVatSupported": "Nur französische USt-IdNr. werden unterstützt"
+  "invalidEmailAddress": "Ungültige E-Mail-Adresse"
 }

@@ -27,40 +27,60 @@ const validateWithVatlayer = async (vatId) => {
   const apiKey = process.env.VATLAYER_API_KEY;
   const apiUrl = `https://apilayer.net/api/validate?access_key=${apiKey}&vat_number=${vatId}`;
   
-  const response = await fetch(apiUrl);
-  const data = await response.json();
+  try {
+    const response = await fetch(apiUrl);
+    const data = await response.json();
 
-  if (!data.valid) {
-    if (isProduction) {
-      Sentry.captureMessage(
-        `VAT API error: ${data.error?.info || "Unknown error"}`,
-        "error"
-      );
+    // Handle database failure response from Vatlayer
+    if (data.database === 'failure') {
+      if (isProduction) {
+        Sentry.captureMessage(
+          `VAT API database failure for ID: ${vatId}`,
+          "error"
+        );
+      }
+      return createErrorResponse(503, "VAT validation service database unavailable");
     }
-    return createErrorResponse(500, "Failed to validate VAT ID");
-  }
 
-  return {
-    status: 200,
-    response: {
-      success: true,
-      data,
-      message: undefined,
-    },
-  };
+    if (!data.valid) {
+      if (isProduction) {
+        Sentry.captureMessage(
+          `VAT API error: ${data.error?.info || "Unknown error"}`,
+          "error"
+        );
+      }
+      return createErrorResponse(400, "Invalid VAT ID");
+    }
+
+    return {
+      status: 200,
+      response: {
+        success: true,
+        data,
+        message: undefined,
+      },
+    };
+  } catch (error) {
+    throw error; // Re-throw to be handled by the calling function
+  }
 };
 
 export const validateVat = async (vatId, service) => {
-  // Validate format first
+  // Expected response 1: Invalid VAT format
   const formatError = validateVatFormat(vatId);
   if (formatError) {
     return formatError;
   }
 
   try {
+    // Expected responses:
+    // 1. Valid VAT
+    // 2. Invalid VAT
+    // 3. Database failure from Vatlayer
     const result = await validateWithVatlayer(vatId);
     return result;
   } catch (error) {
+    // Unexpected error handling
     if (isProduction) {
       Sentry.captureException(error);
     }

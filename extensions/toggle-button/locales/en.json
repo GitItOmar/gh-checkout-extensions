@@ -7,8 +7,8 @@
   "validatingVatId": "Validating VAT ID...",
   "invalidVatIdFormat": "Invalid VAT ID format",
   "failedToValidateVatId": "Failed to validate VAT ID",
+  "invalidVatId": "Invalid VAT ID",
+  "vatServiceUnavailable": "VAT ID validation service is currently unavailable",
   "invalidEmailAddress": "Invalid email address",
-  "companyNameRequired": "Company name is required",
-  "vatIdRequired": "VAT ID is required",
-  "onlyFrenchVatSupported": "Only French VAT IDs are supported"
+  "companyNameRequired": "Company name is required"
 }

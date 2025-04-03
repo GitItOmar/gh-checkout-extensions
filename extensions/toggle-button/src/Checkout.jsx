@@ -252,9 +252,20 @@ function CustomerTypeExtension() {
         setIsVatValidated(true);
       }
     } catch (error) {
+      // Handle different error responses (200, 400, 500, 503)
+      const errorMessage = (() => {
+        if (error.status === 400) {
+          return translate("invalidVatId");
+        } else if (error.status === 503) {
+          return translate("vatServiceUnavailable");
+        } else {
+          return translate("failedToValidateVatId");
+        }
+      })();
+      
       setVatValidationResult({
         success: false,
-        message: translate("failedToValidateVatId"),
+        message: errorMessage,
       });
     } finally {
       setIsValidatingVat(false);
