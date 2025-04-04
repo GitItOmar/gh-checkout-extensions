@@ -183,7 +183,8 @@ function CustomerTypeExtension() {
 
   // Company name handlers
   const handleCompanyNameChange = (value) => {
-    setCompanyName(value);
+    // Limit company name to 40 characters
+    setCompanyName(value.slice(0, 40));
   };
 
   const handleCompanyNameBlur = async (value) => {
@@ -303,6 +304,7 @@ function CustomerTypeExtension() {
                 : undefined
             }
             required
+            maxLength={40}
           />
 
           <TextField
