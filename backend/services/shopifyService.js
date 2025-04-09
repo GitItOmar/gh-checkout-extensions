@@ -5,69 +5,6 @@ import {
 } from "../utils/errorUtils.js";
 
 /**
- * Sets a customer metafield in Shopify
- * @param {Object} options - Options object
- * @param {string} options.customerId - Customer ID
- * @param {string} options.namespace - Metafield namespace
- * @param {string} options.key - Metafield key
- * @param {string} options.value - Metafield value
- * @param {string} options.type - Metafield type
- * @param {string} options.shop - Shop domain
- * @param {string} options.accessToken - Access token
- * @returns {Object} Customer object with updated metafield
- */
-export const setCustomerMetafield = async ({
-  customerId,
-  namespace,
-  key,
-  value,
-  type,
-  client,
-}) => {
-  const operation = gql`
-    mutation customerUpdate($input: CustomerInput!) {
-      customerUpdate(input: $input) {
-        customer {
-          id
-          metafield(namespace: "${namespace}", key: "${key}") {
-            id
-            namespace
-            key
-            value
-            type
-          }
-        }
-        userErrors {
-          field
-          message
-        }
-      }
-    }
-  `;
-
-  const { data, errors } = await client.request(operation?.loc.source.body, {
-    variables: {
-      input: {
-        id: customerId,
-        metafields: [
-          {
-            namespace,
-            key,
-            value,
-            type,
-          },
-        ],
-      },
-    },
-  });
-
-  handleGraphQLResponseErrors(errors);
-  handleGraphQLUserErrors(data.customerUpdate.userErrors);
-
-  return data.customerUpdate.customer;
-};
-
-/**
  * Updates a customer's tax exemption status in Shopify
  * @param {Object} params - Parameters for updating tax exemption
  * @param {string} params.customerId - Customer's ID
@@ -88,35 +25,64 @@ export const updateCustomerTaxExemption = async ({
     throw new Error("Tax exemption status is required");
   }
 
-  const operation = gql`
-    mutation customerUpdate($input: CustomerInput!) {
-      customerUpdate(input: $input) {
-        customer {
-          id
-          taxExempt
-          taxExemptions
-        }
-        userErrors {
-          field
-          message
+  // If using EXEMPT, add tax exemptions using the dedicated mutation
+  if (taxExemption === "EXEMPT") {
+    const operation = gql`
+      mutation customerAddTaxExemptions($customerId: ID!, $taxExemptions: [TaxExemption!]!) {
+        customerAddTaxExemptions(customerId: $customerId, taxExemptions: $taxExemptions) {
+          customer {
+            id
+            taxExempt
+            taxExemptions
+          }
+          userErrors {
+            field
+            message
+          }
         }
       }
-    }
-  `;
+    `;
 
-  const { data, errors } = await client.request(operation?.loc.source.body, {
-    variables: {
-      input: {
-        id: customerId,
-        taxExempt: taxExemption === "EXEMPT",
+    const { data, errors } = await client.request(operation?.loc.source.body, {
+      variables: {
+        customerId,
+        taxExemptions: ["EU_REVERSE_CHARGE_EXEMPTION_RULE"],
       },
-    },
-  });
+    });
 
-  handleGraphQLResponseErrors(errors);
-  handleGraphQLUserErrors(data.customerUpdate.userErrors);
+    handleGraphQLResponseErrors(errors);
+    handleGraphQLUserErrors(data.customerAddTaxExemptions.userErrors);
 
-  return data.customerUpdate.customer;
+    return data.customerAddTaxExemptions.customer;
+  } else {
+    // For NOT_EXEMPT, remove tax exemptions using the dedicated mutation
+    const operation = gql`
+      mutation customerRemoveTaxExemptions($customerId: ID!, $taxExemptions: [TaxExemption!]!) {
+        customerRemoveTaxExemptions(customerId: $customerId, taxExemptions: $taxExemptions) {
+          userErrors {
+            field
+            message
+          }
+          customer {
+            id
+            taxExemptions
+          }
+        }
+      }
+    `;
+
+    const { data, errors } = await client.request(operation?.loc.source.body, {
+      variables: {
+        customerId,
+        taxExemptions: ["EU_REVERSE_CHARGE_EXEMPTION_RULE"],
+      },
+    });
+
+    handleGraphQLResponseErrors(errors);
+    handleGraphQLUserErrors(data.customerRemoveTaxExemptions.userErrors);
+
+    return data.customerRemoveTaxExemptions.customer;
+  }
 };
 
 /**
@@ -192,84 +158,4 @@ export const createCustomerByEmail = async ({ email, client }) => {
   handleGraphQLUserErrors(data.customerCreate.userErrors);
 
   return data.customerCreate.customer;
-};
-
-/**
- * Retrieves a customer by email or ID from Shopify
- * @param {Object} params - Parameters for retrieving a customer
- * @param {string} params.email - Customer's email address
- * @param {string} params.customerId - Customer's ID
- * @param {Object} params.client - Shopify GraphQL client
- * @returns {Promise<Object>} The customer data
- */
-export const getCustomerByEmailOrId = async ({ email, customerId, client }) => {
-  if (!email && !customerId) {
-    throw new Error("Email or customer ID is required");
-  }
-
-  // If we have a customerId, use the node query
-  if (customerId) {
-    const nodeOperation = gql`
-      query getCustomer($id: ID!) {
-        node(id: $id) {
-          ... on Customer {
-            id
-            email
-            metafield(namespace: "custom", key: "vat_id") {
-              namespace
-              key
-              value
-            }
-          }
-        }
-      }
-    `;
-
-    const { data, errors } = await client.request(nodeOperation?.loc.source.body, {
-      variables: {
-        id: customerId,
-      },
-    });
-    
-    handleGraphQLResponseErrors(errors);
-    
-    if (!data.node) {
-      return null;
-    }
-    
-    return data.node;
-  }
-
-  // If we only have email, use the customers query
-  const customerOperation = gql`
-    query getCustomerByEmail($query: String!) {
-      customers(first: 1, query: $query) {
-        edges {
-          node {
-            id
-            email
-            metafield(namespace: "custom", key: "vat_id") {
-              namespace
-              key
-              value
-            }
-          }
-        }
-      }
-    }
-  `;
-
-  const { data, errors } = await client.request(customerOperation?.loc.source.body, {
-    variables: {
-      query: `email:${email}`,
-    },
-  });
-  
-  handleGraphQLResponseErrors(errors);
-
-  if (data.customers.edges.length === 0) {
-    return null;
-  }
-
-  return data.customers.edges[0].node;
 };

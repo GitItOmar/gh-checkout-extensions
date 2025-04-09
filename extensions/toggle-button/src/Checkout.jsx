@@ -16,9 +16,8 @@ import {
   useShop,
   useBuyerJourneyIntercept,
   useApplyMetafieldsChange,
-  useShippingAddress,
 } from "@shopify/ui-extensions-react/checkout";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import useApiClient from "../hooks/useApiClient";
 
 const customerTypeExtension = reactExtension(
@@ -39,7 +38,6 @@ function CustomerTypeExtension() {
   const customer = useCustomer();
   const email = useEmail();
   const shop = useShop();
-  const shippingAddress = useShippingAddress();
 
   // State
   const [vatId, setVatId] = useState("");
@@ -50,123 +48,133 @@ function CustomerTypeExtension() {
   const [validatedVatIds, setValidatedVatIds] = useState(new Set());
   const [isVatValidated, setIsVatValidated] = useState(false);
 
-  // Effect to check if customer already has a VAT ID and set as B2B if they do
-  useEffect(() => {
-    const checkExistingVatId = async () => {
-      // Check for existing VAT ID when email changes
-      if (customer?.id || email) {
-        try {
-          const response = await apiClient("/api/get-customer-vat-id", "POST", {
-            customerId: customer?.id || null,
-            email: email,
-            shopifyDomain: shop.myshopifyDomain,
-          });
+  // Ref to track if VAT ID has been processed already
+  const vatProcessedRef = useRef(false);
 
-          // Only update if the user hasn't manually entered a VAT ID in this session
-          // or if we don't have validation results yet
-          if (
-            response.success &&
-            response.vatId &&
-            (!vatId || !vatValidationResult)
-          ) {
-            setVatId(response.vatId);
-            setIsVatValidated(true);
-            setValidatedVatIds(new Set([response.vatId]));
+  // Helper functions
+  const isValidEmail = (email) => {
+    const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    return email && emailPattern.test(email);
+  };
 
-            // Set customer type to B2B if they have a VAT ID
-            applyAttributeChange({
-              key: "customer_type",
-              value: "b2b",
-              type: "updateAttribute",
-            });
+  const isValidVatIdFormat = (vatId) => {
+    const vatIdPattern = /^[A-Z]{2}[0-9A-Z+*]{2,12}$/;
+    return vatIdPattern.test(vatId);
+  };
 
-            // Set the checkout metafield with the retrieved VAT ID
-            await applyMetafieldsChange({
-              type: "updateMetafield",
-              namespace: "checkoutblocks",
-              key: "umsatzsteuer_identifikationsnu",
-              valueType: "string",
-              value: response.vatId,
-            });
-          }
-        } catch (error) {
-          // Error handling
-        }
+  const isGermanVatId = (vatId) => {
+    return vatId && vatId.startsWith("DE");
+  };
+
+  const isGermanStore = () => {
+    return shop.myshopifyDomain.includes("germany");
+  };
+
+  const updateVatMetafield = async (value) => {
+    if (!value) {
+      value = "N/A"; // Use a placeholder value instead of empty string
+    }
+
+    const result = await applyMetafieldsChange({
+      type: "updateMetafield",
+      namespace: "checkoutblocks",
+      key: "umsatzsteuer_identifikationsnu",
+      valueType: "string",
+      value,
+    });
+
+    return result;
+  };
+
+  const updateTaxExemption = async (exempt = true) => {
+    // Don't exempt German customers in the German store
+    if (exempt && isGermanStore() && isGermanVatId(vatId)) {
+      return { success: true, message: "German VAT ID in German store - no exemption applied" };
+    }
+    
+    return apiClient("/api/exempt-customer-from-taxes", "POST", {
+      customerId: customer?.id ?? null,
+      email: email ?? null,
+      shopifyDomain: shop.myshopifyDomain,
+      exempt,
+    });
+  };
+
+  const validateVatId = async (vatId) => {
+    if (!vatId) return;
+
+    setIsValidatingVat(true);
+
+    try {
+      const data = await apiClient("/api/validate-vat", "POST", { vatId });
+      setVatValidationResult(data);
+
+      if (data.success) {
+        setValidatedVatIds((prev) => new Set(prev).add(vatId));
+        setIsVatValidated(true);
+        vatProcessedRef.current = false; // Reset so we can process this new validation
       }
-    };
+    } catch (error) {
+      const errorMessage = (() => {
+        if (error.status === 400) return translate("invalidVatId");
+        if (error.status === 503) return translate("vatServiceUnavailable");
+        return translate("failedToValidateVatId");
+      })();
 
-    checkExistingVatId();
-  }, [email]); // Only run when email changes
+      setVatValidationResult({
+        success: false,
+        message: errorMessage,
+      });
+    } finally {
+      setIsValidatingVat(false);
+    }
+  };
 
-  // Effect to handle setting VAT ID when email becomes valid
+  // Process VAT ID when email becomes valid
   useEffect(() => {
-    const handleValidEmailWithValidVat = async () => {
-      if (
+    const processValidatedVat = async () => {
+      const shouldProcess =
         isVatValidated &&
         isValidEmail(email) &&
         vatId &&
-        vatValidationResult?.success
-      ) {
-        try {
-          // Update the checkout metafield with the validated VAT ID
-          await applyMetafieldsChange({
-            type: "updateMetafield",
-            namespace: "checkoutblocks",
-            key: "umsatzsteuer_identifikationsnu",
-            valueType: "string",
-            value: vatId,
-          });
+        vatValidationResult?.success &&
+        !vatProcessedRef.current;
 
-          // Save the VAT ID to the customer
-          const vatResponse = await apiClient("/api/set-vat-id", "POST", {
-            customerId: customer?.id || null,
-            value: vatId,
-            email: email,
-            shopifyDomain: shop.myshopifyDomain,
-          });
+      if (!shouldProcess) {
+        return;
+      }
 
-          // Determine if we should exempt from taxes based on store and VAT country
-          const isFrenchStore = shop.myshopifyDomain.includes("gastro-hero-france");
-          const isGermanStore = shop.myshopifyDomain.includes("gastrohero-germany");
-          const vatCountryCode = vatId.substring(0, 2);
-          const shouldExempt = 
-            (isFrenchStore && vatCountryCode === "FR") || 
-            (isGermanStore && vatCountryCode === "DE" && shippingAddress?.countryCode === "DE");
-
-          if (shouldExempt) {
-            const customerId = vatResponse.data?.id || customer?.id;
-
-            if (customerId) {
-              await apiClient("/api/exempt-customer-from-taxes", "POST", {
-                customerId: customerId,
-                shopifyDomain: shop.myshopifyDomain,
-              });
-            }
-          }
-        } catch (error) {
-          // Error handling
-        }
+      try {
+        vatProcessedRef.current = true;
+        const metafieldResult = await updateVatMetafield(vatId);
+        
+        // Only exempt if not a German VAT ID in German store
+        const shouldExempt = !(isGermanStore() && isGermanVatId(vatId));
+        const exemptionResult = await updateTaxExemption(shouldExempt);
+      } catch (error) {
+        vatProcessedRef.current = false;
       }
     };
 
-    handleValidEmailWithValidVat();
-  }, [email, isVatValidated, vatId, vatValidationResult, customer, shop, shippingAddress]);
+    processValidatedVat();
+  }, [isVatValidated, vatId, vatValidationResult, email]);
 
   // Intercept buyer journey to validate B2B requirements
   useBuyerJourneyIntercept(({ canBlockProgress }) => {
-    if (customerType === "b2b" && canBlockProgress) {
-      const isCompanyMissing = !companyName || companyName.trim() === "";
-      const isVatIdInvalid =
-        vatId && vatValidationResult && !vatValidationResult.success;
+    if (customerType !== "b2b" || !canBlockProgress) {
+      return { behavior: "allow" };
+    }
 
-      if (isCompanyMissing || isVatIdInvalid) {
-        setHasAttemptedContinue(true);
+    const isCompanyMissing = !companyName || companyName.trim() === "";
+    const isVatIdInvalid =
+      vatId && vatValidationResult && !vatValidationResult.success;
 
-        return {
-          behavior: "block",
-          reason: "Missing or invalid business information",
-        };
-      }
+    if (isCompanyMissing || isVatIdInvalid) {
+      setHasAttemptedContinue(true);
+      return {
+        behavior: "block",
+        reason: "Missing or invalid business information",
+      };
     }
 
     return { behavior: "allow" };
@@ -176,23 +184,20 @@ function CustomerTypeExtension() {
   const handleSelectionChange = (value) => {
     applyAttributeChange({
       key: "customer_type",
-      value: value,
+      value,
       type: "updateAttribute",
     });
   };
 
   // Company name handlers
   const handleCompanyNameChange = (value) => {
-    // Limit company name to 40 characters
     setCompanyName(value.slice(0, 40));
   };
 
   const handleCompanyNameBlur = async (value) => {
     applyShippingAddressChange({
       type: "updateShippingAddress",
-      address: {
-        company: value,
-      },
+      address: { company: value },
     });
   };
 
@@ -201,10 +206,19 @@ function CustomerTypeExtension() {
     setVatId(value);
     setVatValidationResult(null);
     setIsVatValidated(false);
+    vatProcessedRef.current = false;
+
+    // If VAT ID is cleared, remove tax exemption
+    if (!value && customer?.id) {
+      updateTaxExemption(false).catch(() => {
+        // Error handling for removing tax exemption
+      });
+    }
   };
 
   const handleVatIdBlur = async (value) => {
     if (!value) {
+      await updateVatMetafield("");
       return;
     }
 
@@ -223,54 +237,49 @@ function CustomerTypeExtension() {
       return;
     }
 
-    // Validate VAT ID with external service
     await validateVatId(value);
   };
 
-  // Helper functions
-  const isValidEmail = (email) => {
-    const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    return email && emailPattern.test(email);
-  };
+  const renderBusinessFields = () => {
+    if (customerType !== "b2b") return null;
 
-  const isValidVatIdFormat = (vatId) => {
-    const vatIdPattern = /^[A-Z]{2}[0-9A-Z+*]{2,12}$/;
-    return vatIdPattern.test(vatId);
-  };
+    return (
+      <BlockStack>
+        <TextField
+          label={translate("companyName")}
+          value={companyName || ""}
+          onChange={handleCompanyNameChange}
+          onBlur={() => handleCompanyNameBlur(companyName || "")}
+          error={
+            hasAttemptedContinue && (!companyName || companyName.trim() === "")
+              ? translate("companyNameRequired")
+              : undefined
+          }
+          required
+          maxLength={40}
+        />
 
-  const validateVatId = async (vatId) => {
-    setIsValidatingVat(true);
+        <TextField
+          label={translate("vatId")}
+          value={vatId || ""}
+          onChange={handleVatIdChange}
+          onBlur={() => handleVatIdBlur(vatId || "")}
+          disabled={isValidatingVat}
+          error={
+            vatValidationResult && !vatValidationResult.success
+              ? vatValidationResult.message
+              : undefined
+          }
+        />
 
-    try {
-      const data = await apiClient("/api/validate-vat", "POST", {
-        vatId,
-      });
-      setVatValidationResult(data);
-
-      if (data.success) {
-        // Add to set of validated VAT IDs for this session
-        setValidatedVatIds((prev) => new Set(prev).add(vatId));
-        setIsVatValidated(true);
-      }
-    } catch (error) {
-      // Handle different error responses (200, 400, 500, 503)
-      const errorMessage = (() => {
-        if (error.status === 400) {
-          return translate("invalidVatId");
-        } else if (error.status === 503) {
-          return translate("vatServiceUnavailable");
-        } else {
-          return translate("failedToValidateVatId");
-        }
-      })();
-      
-      setVatValidationResult({
-        success: false,
-        message: errorMessage,
-      });
-    } finally {
-      setIsValidatingVat(false);
-    }
+        {isValidatingVat && (
+          <InlineStack spacing="tight" blockAlignment="center">
+            <Spinner size="small" />
+            <Text size="small">{translate("validatingVatId")}</Text>
+          </InlineStack>
+        )}
+      </BlockStack>
+    );
   };
 
   return (
@@ -290,44 +299,7 @@ function CustomerTypeExtension() {
       </ChoiceList>
 
       {/* Business Customer Fields */}
-      {customerType === "b2b" && (
-        <BlockStack>
-          <TextField
-            label={translate("companyName")}
-            value={companyName || ""}
-            onChange={handleCompanyNameChange}
-            onBlur={() => handleCompanyNameBlur(companyName || "")}
-            error={
-              hasAttemptedContinue &&
-              (!companyName || companyName.trim() === "")
-                ? translate("companyNameRequired")
-                : undefined
-            }
-            required
-            maxLength={40}
-          />
-
-          <TextField
-            label={translate("vatId")}
-            value={vatId || ""}
-            onChange={handleVatIdChange}
-            onBlur={() => handleVatIdBlur(vatId || "")}
-            disabled={isValidatingVat}
-            error={
-              vatValidationResult && !vatValidationResult.success
-                ? vatValidationResult.message
-                : undefined
-            }
-          />
-
-          {isValidatingVat && (
-            <InlineStack spacing="tight" blockAlignment="center">
-              <Spinner size="small" />
-              <Text size="small">{translate("validatingVatId")}</Text>
-            </InlineStack>
-          )}
-        </BlockStack>
-      )}
+      {renderBusinessFields()}
     </BlockStack>
   );
 }
