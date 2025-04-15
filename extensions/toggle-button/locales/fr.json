@@ -10,5 +10,6 @@
   "invalidEmailAddress": "Adresse e-mail invalide",
   "companyNameRequired": "Nom de la société est requis",
   "invalidVatId": "TVA invalide",
-  "vatServiceUnavailable": "Le service de validation de la TVA est actuellement indisponible"
+  "vatServiceUnavailable": "Le service de validation de la TVA est actuellement indisponible",
+  "clear": "Effacer"
 }

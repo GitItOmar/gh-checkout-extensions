@@ -10,5 +10,6 @@
   "invalidVatId": "Invalid VAT ID",
   "vatServiceUnavailable": "VAT ID validation service is currently unavailable",
   "invalidEmailAddress": "Invalid email address",
-  "companyNameRequired": "Company name is required"
+  "companyNameRequired": "Company name is required",
+  "clear": "Clear"
 }

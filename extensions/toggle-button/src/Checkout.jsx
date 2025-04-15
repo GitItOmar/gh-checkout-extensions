@@ -16,6 +16,8 @@ import {
   useShop,
   useBuyerJourneyIntercept,
   useApplyMetafieldsChange,
+  Button,
+  InlineLayout,
 } from "@shopify/ui-extensions-react/checkout";
 import { useState, useEffect, useRef } from "react";
 import useApiClient from "../hooks/useApiClient";
@@ -181,12 +183,28 @@ function CustomerTypeExtension() {
   });
 
   // Customer type selection handler
-  const handleSelectionChange = (value) => {
+  const handleSelectionChange = async (value) => {
     applyAttributeChange({
       key: "customer_type",
       value,
       type: "updateAttribute",
     });
+    
+    // If switching to B2C, remove tax exemption and clear VAT fields
+    if (value === "b2c") {
+      setVatId("");
+      setVatValidationResult(null);
+      setIsVatValidated(false);
+      vatProcessedRef.current = false;
+      
+      if (customer?.id || email) {
+        await updateTaxExemption(false).catch(() => {
+          // Error handling for removing tax exemption
+        });
+      }
+      
+      await updateVatMetafield("");
+    }
   };
 
   // Company name handlers
@@ -225,6 +243,14 @@ function CustomerTypeExtension() {
     // Check if this VAT ID has already been validated successfully in this session
     if (validatedVatIds.has(value)) {
       setIsVatValidated(true);
+      // Apply tax exemption again for previously validated VAT IDs
+      if (isValidEmail(email)) {
+        const shouldExempt = !(isGermanStore() && isGermanVatId(value));
+        await updateTaxExemption(shouldExempt).catch(() => {
+          // Error handling for tax exemption
+        });
+        await updateVatMetafield(value);
+      }
       return;
     }
 
@@ -238,6 +264,21 @@ function CustomerTypeExtension() {
     }
 
     await validateVatId(value);
+  };
+
+  const handleClearVatId = async () => {
+    setVatId("");
+    setVatValidationResult(null);
+    setIsVatValidated(false);
+    vatProcessedRef.current = false;
+    
+    if (customer?.id || email) {
+      await updateTaxExemption(false).catch(() => {
+        // Error handling for removing tax exemption
+      });
+    }
+    
+    await updateVatMetafield("");
   };
 
   const renderBusinessFields = () => {
@@ -259,18 +300,33 @@ function CustomerTypeExtension() {
           maxLength={40}
         />
 
-        <TextField
-          label={translate("vatId")}
-          value={vatId || ""}
-          onChange={handleVatIdChange}
-          onBlur={() => handleVatIdBlur(vatId || "")}
-          disabled={isValidatingVat}
-          error={
-            vatValidationResult && !vatValidationResult.success
-              ? vatValidationResult.message
-              : undefined
-          }
-        />
+        <InlineLayout
+          spacing="base"
+          columns={["fill", "auto"]}
+          blockAlignment="start"
+        >
+          <TextField
+            label={translate("vatId")}
+            value={vatId || ""}
+            onChange={handleVatIdChange}
+            onBlur={() => handleVatIdBlur(vatId || "")}
+            disabled={isValidatingVat}
+            error={
+              vatValidationResult && !vatValidationResult.success
+                ? vatValidationResult.message
+                : undefined
+            }
+          />
+          {vatId && (
+            <Button
+              onPress={handleClearVatId}
+              disabled={isValidatingVat}
+              kind="secondary"
+            >
+              {translate("clear")}
+            </Button>
+          )}
+        </InlineLayout>
 
         {isValidatingVat && (
           <InlineStack spacing="tight" blockAlignment="center">
