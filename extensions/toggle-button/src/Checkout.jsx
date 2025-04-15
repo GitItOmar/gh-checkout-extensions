@@ -18,6 +18,7 @@ import {
   useApplyMetafieldsChange,
   Button,
   InlineLayout,
+  useShippingAddress,
 } from "@shopify/ui-extensions-react/checkout";
 import { useState, useEffect, useRef } from "react";
 import useApiClient from "../hooks/useApiClient";
@@ -40,6 +41,7 @@ function CustomerTypeExtension() {
   const customer = useCustomer();
   const email = useEmail();
   const shop = useShop();
+  const shippingAddress = useShippingAddress();
 
   // State
   const [vatId, setVatId] = useState("");
@@ -49,6 +51,7 @@ function CustomerTypeExtension() {
   const [hasAttemptedContinue, setHasAttemptedContinue] = useState(false);
   const [validatedVatIds, setValidatedVatIds] = useState(new Set());
   const [isVatValidated, setIsVatValidated] = useState(false);
+  const [hasCompanyFieldBeenChanged, setHasCompanyFieldBeenChanged] = useState(false);
 
   // Ref to track if VAT ID has been processed already
   const vatProcessedRef = useRef(false);
@@ -70,6 +73,11 @@ function CustomerTypeExtension() {
 
   const isGermanStore = () => {
     return shop.myshopifyDomain.includes("germany");
+  };
+
+  const isShippingAddressComplete = () => {
+    const { firstName, lastName, address1, city, zip } = shippingAddress || {};
+    return Boolean(firstName && lastName && address1 && city && zip);
   };
 
   const updateVatMetafield = async (value) => {
@@ -168,14 +176,17 @@ function CustomerTypeExtension() {
     }
 
     const isCompanyMissing = !companyName || companyName.trim() === "";
-    const isVatIdInvalid =
-      vatId && vatValidationResult && !vatValidationResult.success;
-
-    if (isCompanyMissing || isVatIdInvalid) {
+    
+    // Only intercept if company field has been changed before
+    // or if shipping address is complete but company is missing
+    const shouldIntercept = hasCompanyFieldBeenChanged || 
+      (isShippingAddressComplete() && isCompanyMissing);
+    
+    if (shouldIntercept && isCompanyMissing) {
       setHasAttemptedContinue(true);
       return {
         behavior: "block",
-        reason: "Missing or invalid business information",
+        reason: translate("companyNameRequired")
       };
     }
 
@@ -210,6 +221,7 @@ function CustomerTypeExtension() {
   // Company name handlers
   const handleCompanyNameChange = (value) => {
     setCompanyName(value.slice(0, 40));
+    setHasCompanyFieldBeenChanged(true);
   };
 
   const handleCompanyNameBlur = async (value) => {

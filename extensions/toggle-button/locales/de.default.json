@@ -10,6 +10,5 @@
   "invalidVatId": "Ungültige USt-IdNr.",
   "vatServiceUnavailable": "Der USt-IdNr.-Validierungsdienst ist derzeit nicht verfügbar.",
   "companyNameRequired": "Firmenname ist erforderlich",
-  "invalidEmailAddress": "Ungültige E-Mail-Adresse",
-  "clear": "Löschen"
+  "invalidEmailAddress": "Ungültige E-Mail-Adresse"
 }
