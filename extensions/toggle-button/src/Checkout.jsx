@@ -159,7 +159,7 @@ function CustomerTypeExtension() {
   }, [isVatValidated, vatId, vatValidationResult, email]);
 
   // Intercept buyer journey to validate B2B requirements
-/*   useBuyerJourneyIntercept(({ canBlockProgress }) => {
+  /*   useBuyerJourneyIntercept(({ canBlockProgress }) => {
     if (customerType !== "b2b" || !canBlockProgress) {
       return { behavior: "allow" };
     }
@@ -218,17 +218,19 @@ function CustomerTypeExtension() {
 
   // Company name handlers
   const handleCompanyNameChange = (value) => {
-    if (value) {
-      setCompanyName(value.slice(0, 40));
+    setCompanyName(value.slice(0, 40));
+    if (value !== "") {
       setHasCompanyFieldBeenChanged(true);
     }
   };
 
   const handleCompanyNameBlur = async (value) => {
-    applyShippingAddressChange({
-      type: "updateShippingAddress",
-      address: { company: value },
-    });
+    if (hasCompanyFieldBeenChanged) {
+      applyShippingAddressChange({
+        type: "updateShippingAddress",
+        address: { company: value },
+      });
+    }
   };
 
   // VAT ID handlers
