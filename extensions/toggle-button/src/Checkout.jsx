@@ -51,7 +51,8 @@ function CustomerTypeExtension() {
   const [hasAttemptedContinue, setHasAttemptedContinue] = useState(false);
   const [validatedVatIds, setValidatedVatIds] = useState(new Set());
   const [isVatValidated, setIsVatValidated] = useState(false);
-  const [hasCompanyFieldBeenChanged, setHasCompanyFieldBeenChanged] = useState(false);
+  const [hasCompanyFieldBeenChanged, setHasCompanyFieldBeenChanged] =
+    useState(false);
 
   // Ref to track if VAT ID has been processed already
   const vatProcessedRef = useRef(false);
@@ -67,14 +68,6 @@ function CustomerTypeExtension() {
     return vatIdPattern.test(vatId);
   };
 
-  const isGermanVatId = (vatId) => {
-    return vatId && vatId.startsWith("DE");
-  };
-
-  const isGermanStore = () => {
-    return shop.myshopifyDomain.includes("germany");
-  };
-
   const isShippingAddressComplete = () => {
     const { firstName, lastName, address1, city, zip } = shippingAddress || {};
     return Boolean(firstName && lastName && address1 && city && zip);
@@ -82,7 +75,11 @@ function CustomerTypeExtension() {
 
   const updateVatMetafield = async (value) => {
     if (!value) {
-      value = "N/A"; // Use a placeholder value instead of empty string
+      return applyMetafieldsChange({
+        type: "removeMetafield",
+        namespace: "checkoutblocks",
+        key: "umsatzsteuer_identifikationsnu",
+      });
     }
 
     const result = await applyMetafieldsChange({
@@ -97,11 +94,6 @@ function CustomerTypeExtension() {
   };
 
   const updateTaxExemption = async (exempt = true) => {
-    // Don't exempt German customers in the German store
-    if (exempt && isGermanStore() && isGermanVatId(vatId)) {
-      return { success: true, message: "German VAT ID in German store - no exemption applied" };
-    }
-    
     return apiClient("/api/exempt-customer-from-taxes", "POST", {
       customerId: customer?.id ?? null,
       email: email ?? null,
@@ -156,11 +148,8 @@ function CustomerTypeExtension() {
 
       try {
         vatProcessedRef.current = true;
-        const metafieldResult = await updateVatMetafield(vatId);
-        
-        // Only exempt if not a German VAT ID in German store
-        const shouldExempt = !(isGermanStore() && isGermanVatId(vatId));
-        const exemptionResult = await updateTaxExemption(shouldExempt);
+        await updateVatMetafield(vatId);
+        await updateTaxExemption(true);
       } catch (error) {
         vatProcessedRef.current = false;
       }
@@ -176,17 +165,18 @@ function CustomerTypeExtension() {
     }
 
     const isCompanyMissing = !companyName || companyName.trim() === "";
-    
+
     // Only intercept if company field has been changed before
     // or if shipping address is complete but company is missing
-    const shouldIntercept = hasCompanyFieldBeenChanged || 
+    const shouldIntercept =
+      hasCompanyFieldBeenChanged ||
       (isShippingAddressComplete() && isCompanyMissing);
-    
+
     if (shouldIntercept && isCompanyMissing) {
       setHasAttemptedContinue(true);
       return {
         behavior: "block",
-        reason: translate("companyNameRequired")
+        reason: translate("companyNameRequired"),
       };
     }
 
@@ -200,22 +190,30 @@ function CustomerTypeExtension() {
       value,
       type: "updateAttribute",
     });
-    
-    // If switching to B2C, remove tax exemption and clear VAT fields
-    if (value === "b2c") {
-      setVatId("");
-      setVatValidationResult(null);
-      setIsVatValidated(false);
-      vatProcessedRef.current = false;
-      
-      if (customer?.id || email) {
-        await updateTaxExemption(false).catch(() => {
-          // Error handling for removing tax exemption
-        });
-      }
-      
-      await updateVatMetafield("");
+
+    // Clear fields when switching customer type
+    setCompanyName("");
+    setVatId("");
+    setVatValidationResult(null);
+    setIsVatValidated(false);
+    vatProcessedRef.current = false;
+    setHasCompanyFieldBeenChanged(false);
+    setHasAttemptedContinue(false);
+
+    // Update shipping address to clear company field
+    await applyShippingAddressChange({
+      type: "updateShippingAddress",
+      address: { company: "" },
+    });
+
+    // If switching to B2C, remove tax exemption
+    if (value === "b2c" && (customer?.id || email)) {
+      await updateTaxExemption(false).catch(() => {
+        // Error handling for removing tax exemption
+      });
     }
+
+    await updateVatMetafield("");
   };
 
   // Company name handlers
@@ -257,8 +255,7 @@ function CustomerTypeExtension() {
       setIsVatValidated(true);
       // Apply tax exemption again for previously validated VAT IDs
       if (isValidEmail(email)) {
-        const shouldExempt = !(isGermanStore() && isGermanVatId(value));
-        await updateTaxExemption(shouldExempt).catch(() => {
+        await updateTaxExemption(true).catch(() => {
           // Error handling for tax exemption
         });
         await updateVatMetafield(value);
@@ -283,13 +280,13 @@ function CustomerTypeExtension() {
     setVatValidationResult(null);
     setIsVatValidated(false);
     vatProcessedRef.current = false;
-    
+
     if (customer?.id || email) {
       await updateTaxExemption(false).catch(() => {
         // Error handling for removing tax exemption
       });
     }
-    
+
     await updateVatMetafield("");
   };
 
