@@ -159,7 +159,7 @@ function CustomerTypeExtension() {
   }, [isVatValidated, vatId, vatValidationResult, email]);
 
   // Intercept buyer journey to validate B2B requirements
-  useBuyerJourneyIntercept(({ canBlockProgress }) => {
+/*   useBuyerJourneyIntercept(({ canBlockProgress }) => {
     if (customerType !== "b2b" || !canBlockProgress) {
       return { behavior: "allow" };
     }
@@ -181,7 +181,7 @@ function CustomerTypeExtension() {
     }
 
     return { behavior: "allow" };
-  });
+  }); */
 
   // Customer type selection handler
   const handleSelectionChange = async (value) => {
@@ -218,8 +218,10 @@ function CustomerTypeExtension() {
 
   // Company name handlers
   const handleCompanyNameChange = (value) => {
-    setCompanyName(value.slice(0, 40));
-    setHasCompanyFieldBeenChanged(true);
+    if (value) {
+      setCompanyName(value.slice(0, 40));
+      setHasCompanyFieldBeenChanged(true);
+    }
   };
 
   const handleCompanyNameBlur = async (value) => {
