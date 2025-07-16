@@ -2,7 +2,7 @@
   "customerTypeDescription": "Commandez en tant que professionnel ou particulier.",
   "businessCustomer": "Client professionnel",
   "privateCustomer": "Client particulier",
-  "vatId": "N° de TVA",
+  "vatId": "N° de TVA (facultatif)",
   "companyName": "Nom de la société",
   "validatingVatId": "Vérification en cours ...",
   "invalidVatIdFormat": "Format du numéro de TVA invalide",

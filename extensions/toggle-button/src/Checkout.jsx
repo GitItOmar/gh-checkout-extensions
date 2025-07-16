@@ -377,7 +377,7 @@ function CustomerTypeExtension() {
         />
 
         <InlineLayout
-          spacing="base"
+          spacing={vatId ? "base" : "none"}
           columns={["fill", "auto"]}
           blockAlignment="start"
         >
