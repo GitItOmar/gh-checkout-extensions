@@ -53,9 +53,35 @@ function CustomerTypeExtension() {
   const [isVatValidated, setIsVatValidated] = useState(false);
   const [hasCompanyFieldBeenChanged, setHasCompanyFieldBeenChanged] =
     useState(false);
+  const [processedVatIds, setProcessedVatIds] = useState(new Set());
 
   // Ref to track if VAT ID has been processed already
   const vatProcessedRef = useRef(false);
+
+  // Clear any existing customer data on component mount to ensure fresh checkout session
+  useEffect(() => {
+    const clearExistingData = async () => {
+      try {
+        // Clear VAT metafield
+        await applyMetafieldsChange({
+          type: "removeMetafield",
+          namespace: "checkoutblocks",
+          key: "umsatzsteuer_identifikationsnu",
+        });
+
+        // Remove tax exemption if customer exists
+        if (customer?.id || email) {
+          await updateTaxExemption(false).catch(() => {
+            // Silently handle errors for cleanup operation
+          });
+        }
+      } catch (error) {
+        // Silently handle errors for cleanup operation
+      }
+    };
+
+    clearExistingData();
+  }, []); // Run only once on mount
 
   // Helper functions
   const isValidEmail = (email) => {
@@ -148,6 +174,7 @@ function CustomerTypeExtension() {
 
       try {
         vatProcessedRef.current = true;
+        setProcessedVatIds((prev) => new Set(prev).add(vatId));
         await updateVatMetafield(vatId);
         await updateTaxExemption(true);
       } catch (error) {
@@ -199,6 +226,8 @@ function CustomerTypeExtension() {
     setVatId("");
     setVatValidationResult(null);
     setIsVatValidated(false);
+    setValidatedVatIds(new Set());
+    setProcessedVatIds(new Set());
     vatProcessedRef.current = false;
     setHasCompanyFieldBeenChanged(false);
     setHasAttemptedContinue(false);
@@ -247,10 +276,20 @@ function CustomerTypeExtension() {
 
   // VAT ID handlers
   const handleVatIdChange = (value) => {
+    const previousVatId = vatId;
     setVatId(value);
     setVatValidationResult(null);
     setIsVatValidated(false);
     vatProcessedRef.current = false;
+
+    // Remove previous VAT ID from processed set if it was different
+    if (previousVatId && previousVatId !== value) {
+      setProcessedVatIds((prev) => {
+        const newSet = new Set(prev);
+        newSet.delete(previousVatId);
+        return newSet;
+      });
+    }
 
     // If VAT ID is cleared, remove tax exemption
     if (!value && customer?.id) {
@@ -266,11 +305,13 @@ function CustomerTypeExtension() {
       return;
     }
 
-    // Check if this VAT ID has already been validated successfully in this session
+    // Check if this VAT ID has already been validated and processed in this session
     if (validatedVatIds.has(value)) {
       setIsVatValidated(true);
-      // Apply tax exemption again for previously validated VAT IDs
-      if (isValidEmail(email)) {
+      
+      // Only apply tax exemption and update metafield if not already processed
+      if (!processedVatIds.has(value) && isValidEmail(email)) {
+        setProcessedVatIds((prev) => new Set(prev).add(value));
         await updateTaxExemption(true).catch(() => {
           // Error handling for tax exemption
         });
@@ -292,10 +333,20 @@ function CustomerTypeExtension() {
   };
 
   const handleClearVatId = async () => {
+    const currentVatId = vatId;
     setVatId("");
     setVatValidationResult(null);
     setIsVatValidated(false);
     vatProcessedRef.current = false;
+    
+    // Remove from processed VAT IDs
+    if (currentVatId) {
+      setProcessedVatIds((prev) => {
+        const newSet = new Set(prev);
+        newSet.delete(currentVatId);
+        return newSet;
+      });
+    }
 
     if (customer?.id || email) {
       await updateTaxExemption(false).catch(() => {

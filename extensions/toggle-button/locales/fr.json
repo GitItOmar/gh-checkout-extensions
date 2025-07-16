@@ -1,15 +1,15 @@
 {
-  "customerTypeDescription": "Choisissez si vous souhaitez passer une commande en tant que particulier ou en tant que client professionnel.",
+  "customerTypeDescription": "Commandez en tant que professionnel ou particulier.",
   "businessCustomer": "Client professionnel",
   "privateCustomer": "Client particulier",
-  "vatId": "TVA",
+  "vatId": "N° de TVA",
   "companyName": "Nom de la société",
-  "validatingVatId": "Validation de la TVA...",
-  "invalidVatIdFormat": "Format de la TVA invalide",
-  "failedToValidateVatId": "Erreur lors de la validation de la TVA",
+  "validatingVatId": "Vérification en cours ...",
+  "invalidVatIdFormat": "Format du numéro de TVA invalide",
+  "failedToValidateVatId": "La vérification du numéro de TVA a échoué.",
   "invalidEmailAddress": "Adresse e-mail invalide",
-  "companyNameRequired": "Nom de la société est requis",
-  "invalidVatId": "TVA invalide",
-  "vatServiceUnavailable": "Le service de validation de la TVA est actuellement indisponible",
+  "companyNameRequired": "Veuillez renseigner le nom de votre société",
+  "invalidVatId": "Numéro de TVA invalide",
+  "vatServiceUnavailable": "La vérification du numéro de TVA est momentanément indisponible. Merci de réessayer dans quelques instants.",
   "clear": "Effacer"
 }
