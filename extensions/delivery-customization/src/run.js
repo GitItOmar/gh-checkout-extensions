@@ -12,7 +12,7 @@ const NO_CHANGES = {
   operations: [],
 };
 
-const ALLOWED_B2C_TITLE = "Par colis ou par transporteur (selon le volume)";
+const ALLOWED_B2C_TITLE = "Livraison standard";
 
 /**
  * @param {RunInput} input
@@ -31,8 +31,13 @@ export const run = (input) => {
       .filter(({ title }) => title === ALLOWED_B2C_TITLE)
       .map(({ handle }) => handle);
 
+    // If no allowed shipping option is found, don't change anything
+    if (allowedHandles.length === 0) {
+      return NO_CHANGES;
+    }
+
     const hideOperations = deliveryOptions
-      .filter(({ handle, title }) => !allowedHandles.includes(handle))
+      .filter(({ handle }) => !allowedHandles.includes(handle))
       .map(({ handle }) => ({
         hide: { deliveryOptionHandle: handle }
       }));
