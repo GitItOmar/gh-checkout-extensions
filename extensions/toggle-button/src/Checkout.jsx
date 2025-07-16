@@ -185,6 +185,9 @@ function CustomerTypeExtension() {
 
   // Customer type selection handler
   const handleSelectionChange = async (value) => {
+    // Store previous customer type to check if we need to update shipping address
+    const previousCustomerType = customerType;
+    
     applyAttributeChange({
       key: "customer_type",
       value,
@@ -200,11 +203,17 @@ function CustomerTypeExtension() {
     setHasCompanyFieldBeenChanged(false);
     setHasAttemptedContinue(false);
 
-    // Update shipping address to clear company field
-    await applyShippingAddressChange({
-      type: "updateShippingAddress",
-      address: { company: "" },
-    });
+    // Only update shipping address if necessary to avoid triggering validation
+    if (previousCustomerType === "b2b" && value === "b2c") {
+      // Only clear company field if it exists in shipping address
+      const currentCompany = shippingAddress?.company;
+      if (currentCompany && currentCompany.trim() !== "") {
+        await applyShippingAddressChange({
+          type: "updateShippingAddress",
+          address: { company: "" },
+        });
+      }
+    }
 
     // If switching to B2C, remove tax exemption
     if (value === "b2c" && (customer?.id || email)) {
@@ -213,7 +222,10 @@ function CustomerTypeExtension() {
       });
     }
 
-    await updateVatMetafield("");
+    // Only clear VAT metafield if switching away from B2B
+    if (previousCustomerType === "b2b" && value === "b2c") {
+      await updateVatMetafield("");
+    }
   };
 
   // Company name handlers
