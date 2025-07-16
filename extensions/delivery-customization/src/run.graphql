@@ -1,0 +1,14 @@
+query RunInput {
+  cart {
+    attribute (key: "customer_type") {
+      key
+      value
+    }
+    deliveryGroups {
+      deliveryOptions {
+        handle
+        title
+      }
+    }
+  }
+}

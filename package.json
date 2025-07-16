@@ -4,7 +4,7 @@
   "license": "UNLICENSED",
   "type": "module",
   "engines": {
-    "node": "20.x"
+    "node": "23.x"
   },
   "scripts": {
     "start": "cd backend && npm start",
