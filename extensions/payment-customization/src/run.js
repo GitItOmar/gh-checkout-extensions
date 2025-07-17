@@ -16,17 +16,21 @@ const NO_CHANGES = {
  * @param {RunInput} input
  * @returns {FunctionRunResult}
  */
-export function run(input) {  
+export function run(input) {
   const customerType = input?.cart?.attribute?.value;
 
-  if (customerType === "b2c") {
+  // Billie (Paiement sur facture) should only be visible for b2b customers
+  // Hide Billie for b2c and for undefined customerType (treat as b2c)
+  if (!customerType || customerType === 'b2c') {
     const hideOperations = input.paymentMethods
-      .filter(method => 
-        method.name === "Rechnungskauf für Firmenkunden" || 
-        method.name === "Billie"
+      .filter(
+        ({ name }) =>
+          name === 'Rechnungskauf für Firmenkunden' ||
+          name === 'Billie' ||
+          name === 'Paiement sur facture'
       )
-      .map(method => ({
-        hide: { paymentMethodId: method.id }
+      .map(({ id }) => ({
+        hide: { paymentMethodId: id }
       }));
 
     return {
@@ -34,11 +38,12 @@ export function run(input) {
     };
   }
 
-  if (!customerType || customerType === "b2b") {
+  // For b2b, optionally hide other payment methods if needed (example: klarna_pay_later)
+  if (customerType === 'b2b') {
     const hideOperations = input.paymentMethods
-      .filter(method => method.name === "klarna_pay_later")
-      .map(method => ({
-        hide: { paymentMethodId: method.id }
+      .filter(({ name }) => name === 'klarna_pay_later')
+      .map(({ id }) => ({
+        hide: { paymentMethodId: id }
       }));
 
     return {
