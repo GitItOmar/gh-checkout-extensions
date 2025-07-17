@@ -83,6 +83,17 @@ function CustomerTypeExtension() {
     clearExistingData();
   }, []); // Run only once on mount
 
+  // Set default customer type to b2b if no value is present
+  useEffect(() => {
+    if (!customerType) {
+      applyAttributeChange({
+        key: "customer_type",
+        value: "b2b",
+        type: "updateAttribute",
+      });
+    }
+  }, [customerType, applyAttributeChange]);
+
   // Helper functions
   const isValidEmail = (email) => {
     const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
