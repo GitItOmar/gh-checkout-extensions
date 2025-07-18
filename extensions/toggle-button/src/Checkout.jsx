@@ -94,6 +94,29 @@ function CustomerTypeExtension() {
     }
   }, [customerType, applyAttributeChange]);
 
+  // Pre-populate company field if customer has company information
+  useEffect(() => {
+    const prePopulateCompanyField = () => {
+      // Only pre-populate if we're in B2B mode and don't already have a company name set
+      if (customerType === "b2b" && !companyName) {
+        // Check shipping address first (most reliable source)
+        const existingCompany = shippingAddress?.company;
+        
+        if (existingCompany && existingCompany.trim() !== "") {
+          setCompanyName(existingCompany.trim());
+          setHasCompanyFieldBeenChanged(true);
+        }
+        // TODO: Add fallback to customer.defaultAddress.company if available
+        // else if (customer?.defaultAddress?.company) {
+        //   setCompanyName(customer.defaultAddress.company.trim());
+        //   setHasCompanyFieldBeenChanged(true);
+        // }
+      }
+    };
+
+    prePopulateCompanyField();
+  }, [customerType, shippingAddress, customer, companyName]);
+
   // Helper functions
   const isValidEmail = (email) => {
     const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
