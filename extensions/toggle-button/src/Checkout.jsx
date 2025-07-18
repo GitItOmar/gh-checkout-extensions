@@ -196,30 +196,29 @@ function CustomerTypeExtension() {
     processValidatedVat();
   }, [isVatValidated, vatId, vatValidationResult, email]);
 
-  // Intercept buyer journey to validate B2B requirements
-  /*   useBuyerJourneyIntercept(({ canBlockProgress }) => {
-    if (customerType !== "b2b" || !canBlockProgress) {
-      return { behavior: "allow" };
-    }
+  // Update company field in shipping address when address is complete and company name exists
+  useEffect(() => {
+    const updateCompanyInAddress = async () => {
+      if (
+        customerType === "b2b" &&
+        companyName &&
+        companyName.trim() !== "" &&
+        isShippingAddressComplete() &&
+        shippingAddress?.company !== companyName
+      ) {
+        try {
+          await applyShippingAddressChange({
+            type: "updateShippingAddress",
+            address: { company: companyName },
+          });
+        } catch (error) {
+          // Silently handle errors for address update
+        }
+      }
+    };
 
-    const isCompanyMissing = !companyName || companyName.trim() === "";
-
-    // Only intercept if company field has been changed before
-    // or if shipping address is complete but company is missing
-    const shouldIntercept =
-      hasCompanyFieldBeenChanged ||
-      (isShippingAddressComplete() && isCompanyMissing);
-
-    if (shouldIntercept && isCompanyMissing) {
-      setHasAttemptedContinue(true);
-      return {
-        behavior: "block",
-        reason: translate("companyNameRequired"),
-      };
-    }
-
-    return { behavior: "allow" };
-  }); */
+    updateCompanyInAddress();
+  }, [companyName, customerType, shippingAddress, isShippingAddressComplete]);
 
   // Customer type selection handler
   const handleSelectionChange = async (value) => {
@@ -245,13 +244,17 @@ function CustomerTypeExtension() {
 
     // Only update shipping address if necessary to avoid triggering validation
     if (previousCustomerType === "b2b" && value === "b2c") {
-      // Only clear company field if it exists in shipping address
+      // Clear company field when switching to B2C, but only if it has content
       const currentCompany = shippingAddress?.company;
       if (currentCompany && currentCompany.trim() !== "") {
-        await applyShippingAddressChange({
-          type: "updateShippingAddress",
-          address: { company: "" },
-        });
+        try {
+          await applyShippingAddressChange({
+            type: "updateShippingAddress",
+            address: { company: "" },
+          });
+        } catch (error) {
+          // Silently handle errors for address update
+        }
       }
     }
 
@@ -277,12 +280,8 @@ function CustomerTypeExtension() {
   };
 
   const handleCompanyNameBlur = async (value) => {
-    if (hasCompanyFieldBeenChanged) {
-      applyShippingAddressChange({
-        type: "updateShippingAddress",
-        address: { company: value },
-      });
-    }
+    // Company field is now updated via useEffect when shipping address is complete
+    // This avoids triggering validation during address entry
   };
 
   // VAT ID handlers
