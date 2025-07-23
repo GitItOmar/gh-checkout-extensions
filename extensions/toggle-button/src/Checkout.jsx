@@ -54,9 +54,28 @@ function CustomerTypeExtension() {
   const [hasCompanyFieldBeenChanged, setHasCompanyFieldBeenChanged] =
     useState(false);
   const [processedVatIds, setProcessedVatIds] = useState(new Set());
+  const [hasCompanyFieldBeenBlurred, setHasCompanyFieldBeenBlurred] =
+    useState(false);
 
   // Ref to track if VAT ID has been processed already
   const vatProcessedRef = useRef(false);
+
+  // Block checkout if B2B customer doesn't have company name
+  useBuyerJourneyIntercept(({ canBlockProgress }) => {
+    if (customerType === "b2b" && (!companyName || companyName.trim() === "")) {
+      setHasAttemptedContinue(true);
+      return canBlockProgress({
+        reason: translate("companyNameRequired"),
+        errors: [
+          {
+            message: translate("companyNameRequired"),
+            target: "$.cart.customerType",
+          },
+        ],
+      });
+    }
+    return { behavior: "allow" };
+  });
 
   // Clear any existing customer data on component mount to ensure fresh checkout session
   useEffect(() => {
@@ -264,6 +283,7 @@ function CustomerTypeExtension() {
     vatProcessedRef.current = false;
     setHasCompanyFieldBeenChanged(false);
     setHasAttemptedContinue(false);
+    setHasCompanyFieldBeenBlurred(false);
 
     // Only update shipping address if necessary to avoid triggering validation
     if (previousCustomerType === "b2b" && value === "b2c") {
@@ -303,6 +323,7 @@ function CustomerTypeExtension() {
   };
 
   const handleCompanyNameBlur = async (value) => {
+    setHasCompanyFieldBeenBlurred(true);
     // Company field is now updated via useEffect when shipping address is complete
     // This avoids triggering validation during address entry
   };
@@ -401,7 +422,7 @@ function CustomerTypeExtension() {
           onChange={handleCompanyNameChange}
           onBlur={() => handleCompanyNameBlur(companyName || "")}
           error={
-            hasAttemptedContinue && (!companyName || companyName.trim() === "")
+            (hasAttemptedContinue || hasCompanyFieldBeenBlurred) && (!companyName || companyName.trim() === "")
               ? translate("companyNameRequired")
               : undefined
           }
