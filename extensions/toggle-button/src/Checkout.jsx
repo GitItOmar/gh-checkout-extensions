@@ -59,6 +59,8 @@ function CustomerTypeExtension() {
 
   // Ref to track if VAT ID has been processed already
   const vatProcessedRef = useRef(false);
+  // Ref to track previous customer type
+  const previousCustomerTypeRef = useRef(customerType);
 
   // Block checkout if B2B customer doesn't have company name
   useBuyerJourneyIntercept(({ canBlockProgress }) => {
@@ -112,6 +114,26 @@ function CustomerTypeExtension() {
       });
     }
   }, [customerType, applyAttributeChange]);
+
+  // Reset validation states when customer type changes
+  useEffect(() => {
+    // Only reset if customer type actually changed
+    if (previousCustomerTypeRef.current !== customerType) {
+      // Immediate reset
+      setHasAttemptedContinue(false);
+      setHasCompanyFieldBeenBlurred(false);
+      setHasCompanyFieldBeenChanged(false);
+      
+      // Also reset after a micro-task to ensure React has finished updating
+      setTimeout(() => {
+        setHasAttemptedContinue(false);
+        setHasCompanyFieldBeenBlurred(false);
+        setHasCompanyFieldBeenChanged(false);
+      }, 0);
+      
+      previousCustomerTypeRef.current = customerType;
+    }
+  }, [customerType]);
 
   // Pre-populate company field if customer has company information
   useEffect(() => {
@@ -267,23 +289,26 @@ function CustomerTypeExtension() {
     // Store previous customer type to check if we need to update shipping address
     const previousCustomerType = customerType;
     
+    // Apply the customer type change immediately
     applyAttributeChange({
       key: "customer_type",
       value,
       type: "updateAttribute",
     });
 
-    // Clear fields when switching customer type
-    setCompanyName("");
-    setVatId("");
+    // Reset ALL states after customer type change
+    setHasAttemptedContinue(false);
+    setHasCompanyFieldBeenBlurred(false);
+    setHasCompanyFieldBeenChanged(false);
     setVatValidationResult(null);
     setIsVatValidated(false);
     setValidatedVatIds(new Set());
     setProcessedVatIds(new Set());
     vatProcessedRef.current = false;
-    setHasCompanyFieldBeenChanged(false);
-    setHasAttemptedContinue(false);
-    setHasCompanyFieldBeenBlurred(false);
+
+    // Clear field values
+    setCompanyName("");
+    setVatId("");
 
     // Only update shipping address if necessary to avoid triggering validation
     if (previousCustomerType === "b2b" && value === "b2c") {
@@ -323,7 +348,10 @@ function CustomerTypeExtension() {
   };
 
   const handleCompanyNameBlur = async (value) => {
-    setHasCompanyFieldBeenBlurred(true);
+    // Only set blur state if we're actually in B2B mode
+    if (customerType === "b2b") {
+      setHasCompanyFieldBeenBlurred(true);
+    }
     // Company field is now updated via useEffect when shipping address is complete
     // This avoids triggering validation during address entry
   };
@@ -422,7 +450,9 @@ function CustomerTypeExtension() {
           onChange={handleCompanyNameChange}
           onBlur={() => handleCompanyNameBlur(companyName || "")}
           error={
-            (hasAttemptedContinue || hasCompanyFieldBeenBlurred) && (!companyName || companyName.trim() === "")
+            customerType === "b2b" &&
+            (hasAttemptedContinue || hasCompanyFieldBeenBlurred) && 
+            (!companyName || companyName.trim() === "")
               ? translate("companyNameRequired")
               : undefined
           }
